@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Project Specific
+*.log
+*.csv
+*.xml
+news_cache.xml
+trades_analysis.csv
+gold_m5.csv
+
+# MT5 Data (Exclude paths from config)
+/Users/x10/Library/Application Support/net.metaquotes.wine.metatrader5/
+
+# OS
+.DS_Store
