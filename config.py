@@ -36,8 +36,8 @@ COOLDOWN_SECONDS = 15   # ระยะเวลารอระหว่างไ
 # =========================
 # EA RISK LOGIC (Trailing & Breakeven)
 # =========================
-USE_TRAILING_STOP = False  # 🔥 ปิดไว้ก่อนเพราะทำให้กำไรลดลง (เปลี่ยนเป็น True เพื่อเปิด)
-USE_BREAKEVEN = False      # 🔥 ปิดไว้ก่อน
+USE_TRAILING_STOP = True
+USE_BREAKEVEN = True    
 
 TRAILING_START = 5.0    
 TRAILING_STEP = 1.0     
