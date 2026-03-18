@@ -43,8 +43,8 @@ BREAKEVEN_START = 3.0
 # =========================
 
 # Time Filter (Broker Time)
-TRADE_START_HOUR = 10
-TRADE_END_HOUR = 21
+TRADE_START_HOUR = 0
+TRADE_END_HOUR = 23
 
 # RSI Safe Zone (Optimized for more entries)
 RSI_BUY_MIN = 40       
