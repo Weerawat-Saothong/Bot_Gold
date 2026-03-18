@@ -51,14 +51,14 @@ BREAKEVEN_START = 3.0
 TRADE_START_HOUR = 0
 TRADE_END_HOUR = 23
 
-# RSI Safe Zone (Optimized for more entries)
-RSI_BUY_MIN = 40       
-RSI_BUY_MAX = 80       
-RSI_SELL_MIN = 20      
-RSI_SELL_MAX = 60      
+# RSI Safe Zone (Middle Ground - More Aggressive)
+RSI_BUY_MIN = 30       
+RSI_BUY_MAX = 90       
+RSI_SELL_MIN = 10      
+RSI_SELL_MAX = 70      
 
-# Volatility Filter
-MAX_ATR_LIMIT = 10.0   
+# Volatility Filter (Middle Ground)
+MAX_ATR_LIMIT = 15.0   
 
 # =========================
 # AI SETTINGS

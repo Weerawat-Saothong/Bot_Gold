@@ -292,9 +292,9 @@ def get_signal(df, df_htf):
 
     # SIGNAL GENERATION
     # 1. LIQUIDITY SWEEP (High Priority)
-    if trend_up and sweep == "BUY_SWEEP" and momentum_up and rsi < 75:
+    if trend_up and sweep == "BUY_SWEEP" and momentum_up and rsi < RSI_BUY_MAX:
         return "BUY", "Liquidity Sweep Buy"
-    if trend_down and sweep == "SELL_SWEEP" and momentum_down and rsi > 25:
+    if trend_down and sweep == "SELL_SWEEP" and momentum_down and rsi > RSI_SELL_MIN:
         return "SELL", "Liquidity Sweep Sell"
 
     # 2. PULLBACK & STRUCTURE (Relaxed HTF)
@@ -313,7 +313,7 @@ def get_signal(df, df_htf):
     # Allow SELL if HTF is DOWN OR HTF is RANGE
     if trend_down and (htf_down or htf_mode == "RANGE"):
         pb_ok, pb_msg = check_pullback(df, "DOWN")
-        if pb_ok and momentum_down and rsi > 25:
+        if pb_ok and momentum_down and rsi > RSI_SELL_MIN:
             return "SELL", pb_msg
 
         if structure == "LH" and RSI_SELL_MIN <= rsi <= RSI_SELL_MAX and momentum_down:
