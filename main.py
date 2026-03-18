@@ -127,6 +127,7 @@ def gold_market_open(thai_time):
 # =========================
 
 trades_today = 0
+black_swan_trades_today = 0
 current_day = datetime.now(timezone.utc).day
 
 last_entry_price = None
@@ -246,6 +247,7 @@ Bot in standby mode
 """)
 
             trades_today = 0
+            black_swan_trades_today = 0
             current_day = now.day
             previous_pnl = 0
 
@@ -404,7 +406,7 @@ Bot in standby mode
 
         if current_positions < MAX_POSITIONS:
 
-            if ai_signal in ["BUY", "SELL"]:
+            if ai_signal in ["BUY", "SELL", "BUY_SWAN", "SELL_SWAN"]:
 
                 if last_entry_price is None:
                     signal = ai_signal
@@ -423,7 +425,7 @@ Bot in standby mode
 
 
         # =========================
-        # MOMENTUM CONFIRMATION
+        # MOMENTUM CONFIRMATION & SWAN OVERRIDE
         # =========================
 
         if signal == "BUY" and not momentum_up:
@@ -431,6 +433,24 @@ Bot in standby mode
 
         if signal == "SELL" and not momentum_down:
             signal = "NONE"
+
+        if signal == "BUY_SWAN":
+            if black_swan_trades_today >= 1:
+                signal = "NONE"
+                logger.info("Black Swan limit reached for today.")
+            else:
+                signal = "BUY"
+                black_swan_trades_today += 1
+                send_line("🚨 BLACK SWAN MODE ACTIVATED: BUY 🚨\n\nChasing extreme momentum!")
+
+        if signal == "SELL_SWAN":
+            if black_swan_trades_today >= 1:
+                signal = "NONE"
+                logger.info("Black Swan limit reached for today.")
+            else:
+                signal = "SELL"
+                black_swan_trades_today += 1
+                send_line("🚨 BLACK SWAN MODE ACTIVATED: SELL 🚨\n\nChasing extreme momentum waterfall!")
 
         # =========================
         # REAL-TIME RISK MANAGEMENT (Trailing & Breakeven)

@@ -61,6 +61,15 @@ RSI_SELL_MAX = 70
 MAX_ATR_LIMIT = 15.0   
 
 # =========================
+# BLACK SWAN (MOMENTUM) MODE
+# =========================
+ENABLE_BLACK_SWAN = True      
+BLACK_SWAN_ATR_MIN = 18.0     
+BLACK_SWAN_RSI_SELL = 10      
+BLACK_SWAN_RSI_BUY = 90
+
+
+# =========================
 # AI SETTINGS
 # =========================
 

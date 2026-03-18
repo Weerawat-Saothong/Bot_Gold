@@ -228,6 +228,31 @@ def check_pullback(df, trend="UP"):
 # SIGNAL ENGINE
 # ------------------------
 
+# ------------------------
+# BLACK SWAN (MOMENTUM) SIGNAL
+# ------------------------
+def get_black_swan_signal(df):
+    if not ENABLE_BLACK_SWAN:
+        return "NONE"
+
+    last = df.iloc[-1]
+    atr = last["atr"]
+    rsi = last["rsi"]
+
+    # ต้องมีความผันผวนระดับพายุลูกใหญ่
+    if atr < BLACK_SWAN_ATR_MIN:
+        return "NONE"
+
+    # ทุบสุดแรง
+    if rsi < BLACK_SWAN_RSI_SELL:
+        return "SELL_SWAN"
+    
+    # ลากสุดแรง
+    if rsi > BLACK_SWAN_RSI_BUY:
+        return "BUY_SWAN"
+
+    return "NONE"
+
 def get_signal(df, df_htf):
 
     if len(df) < 50 or len(df_htf) < 50:
@@ -249,7 +274,12 @@ def get_signal(df, df_htf):
     if not (TRADE_START_HOUR <= current_hour <= TRADE_END_HOUR):
         return "NONE", f"Outside trading hours ({current_hour}:00)"
 
-    # 2. VOLATILITY LIMIT
+    # 2. BLACK SWAN EMERGENCY OVERRIDE
+    swan_signal = get_black_swan_signal(df)
+    if swan_signal != "NONE":
+        return swan_signal, f"Black Swan Event Detected (ATR: {round(atr,2)}, RSI: {round(rsi,2)})"
+
+    # 3. NORMAL VOLATILITY LIMIT
     if atr > MAX_ATR_LIMIT:
         return "NONE", f"High volatility (ATR: {round(atr,2)} > {MAX_ATR_LIMIT})"
 
