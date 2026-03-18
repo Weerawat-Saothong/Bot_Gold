@@ -142,6 +142,25 @@ account_balance = 0
 current_positions = 0
 daily_pnl = 0
 
+# Check if trade file is from a previous day (for startup reset)
+try:
+    trade_file_path = BASE_PATH + "trades_today.txt"
+    if os.path.exists(trade_file_path):
+        mtime = os.path.getmtime(trade_file_path)
+        file_date = datetime.fromtimestamp(mtime, timezone.utc).date()
+        today_date = datetime.now(timezone.utc).date()
+        if file_date < today_date:
+            logger.info("Startup: Reseting yesterday's trades from file")
+            with open(trade_file_path, "w") as f:
+                f.write("0")
+            # Also reset PnL file if it exists
+            pnl_file_path = BASE_PATH + "pnl.txt"
+            if os.path.exists(pnl_file_path):
+                with open(pnl_file_path, "w") as f:
+                    f.write("0.0")
+except Exception as e:
+    logger.error(f"Error checking daily reset on startup: {e}")
+
 # 🔥 AI Analysis: Tracking Rejection Reasons
 rejection_reasons = {}
 last_analysis_time = datetime.now(timezone.utc)
