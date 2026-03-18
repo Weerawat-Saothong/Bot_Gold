@@ -238,9 +238,17 @@ def get_black_swan_signal(df):
     last = df.iloc[-1]
     atr = last["atr"]
     rsi = last["rsi"]
+    
+    # คำนวณค่าเฉลี่ย Volume ย้อนหลัง 14 แท่ง
+    avg_volume = df["volume"].iloc[-15:-1].mean()
+    current_volume = last["volume"]
 
     # ต้องมีความผันผวนระดับพายุลูกใหญ่
     if atr < BLACK_SWAN_ATR_MIN:
+        return "NONE"
+        
+    # ต้องมีปริมาณซื้อขายหนาแน่น (ป้องกันรายย่อยสับหลอก)
+    if current_volume < (avg_volume * 1.5):
         return "NONE"
 
     # ทุบสุดแรง
@@ -287,7 +295,7 @@ def get_signal(df, df_htf):
     trend_up = last["ema50"] > last["ema200"]
     trend_down = last["ema50"] < last["ema200"]
 
-    # HTF TREND & STRENGTH
+    # HTF TREND & STRENGTH (กล้องส่องทางไกล)
     htf_ok, htf_mode = trend_strength_filter(df_htf)
     htf_up = last_htf["ema50"] > last_htf["ema200"]
     htf_down = last_htf["ema50"] < last_htf["ema200"]
