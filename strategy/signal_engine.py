@@ -94,7 +94,7 @@ def market_structure(df):
 def trend_strength_filter(df, period=200):
     last = df.iloc[-1]
     strength = abs(last["ema50"] - last["ema200"])
-    if strength < 0.5:
+    if strength < 0.2:
         return False, "RANGE"
     return True, "TRENDING"
 
@@ -282,11 +282,13 @@ def get_signal(df, df_htf):
 
     # Relaxed Trend Strength
     _, ltf_mode = trend_strength_filter(df)
-    if ltf_mode == "RANGE" and atr < 1.0:
-        return "NONE", "Flat range market (ATR < 1.0)"
+    if ltf_mode == "RANGE" and atr < 0.8:
+        return "NONE", "Flat range market (ATR < 0.8)"
 
     if not volatility_expansion(df):
-        return "NONE", "No volatility expansion detected"
+        # Relaxed: Only check if ATR is extremely low
+        if atr < 0.5:
+            return "NONE", "No volatility expansion detected"
 
     # SIGNAL GENERATION
     # 1. LIQUIDITY SWEEP (High Priority)
