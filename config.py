@@ -1,4 +1,9 @@
 import platform
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # =========================
 # AUTO DETECT PLATFORM
@@ -95,4 +100,4 @@ NEWS_IMPACT = "high"
 USE_AI_GATEKEEPER = True
 AI_CONFIDENCE_THRESHOLD = 70
 AI_MODEL_NAME = "gemini-2.0-flash"
-AI_API_KEY = "AIzaSyCr_6PgLDrjHqxWnAEoezGkcIGx1XwPIXw"
+AI_API_KEY = os.getenv("AI_API_KEY", "YOUR_API_KEY_HERE")

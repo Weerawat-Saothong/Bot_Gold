@@ -20,3 +20,6 @@ gold_m5.csv
 
 # OS
 .DS_Store
+.env
+__pycache__/
+*.log
