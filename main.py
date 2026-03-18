@@ -10,6 +10,7 @@ from execution.signal_writer import write_signal
 from risk.risk_engine import calculate_sl_tp
 from notify.line_notify import send_line
 from notify.news_manager import is_news_active
+from strategy.ai_gatekeeper import gatekeeper
 
 # =========================
 # LOGGING SETUP
@@ -94,6 +95,8 @@ def read_price():
 
 def write_bot_active_trade(state):
     try:
+        if IS_ANALYSIS_MODE:
+            return
         with open(BASE_PATH + "bot_active_trade.txt", "w") as f:
             f.write(str(state))
     except Exception as e:
@@ -477,6 +480,43 @@ Buy Liquidity Sweep Detected
 
 
         # =========================
+        # AI GATEKEEPER VALIDATION (NEW)
+        # =========================
+
+        if signal in ["BUY", "SELL"] and USE_AI_GATEKEEPER:
+            
+            # Prepare market state for AI
+            market_state = {
+                "price": round(price, 2),
+                "htf_trend": "UP" if df_htf.iloc[-1]['ema50'] > df_htf.iloc[-1]['ema200'] else "DOWN",
+                "ltf_trend": "UP" if last['ema50'] > last['ema200'] else "DOWN",
+                "rsi": round(last['rsi'], 2),
+                "atr": round(last['atr'], 2),
+                "structure": market_structure(df)
+            }
+            
+            signal_data = {
+                "direction": signal,
+                "pattern": rejection_reason # Rejection reason becomes pattern if signal found
+            }
+            
+            ai_result = gatekeeper.validate_signal(market_state, signal_data)
+            
+            if ai_result['decision'] == "REJECT" or ai_result['confidence'] < AI_CONFIDENCE_THRESHOLD:
+                logger.info(f"AI Gatekeeper Rejected Signal. Reason: {ai_result['reason']} (Confidence: {ai_result['confidence']}%)")
+                
+                # แจ้งเตือนผ่าน LINE เฉพาะในโหมดวิเคราะห์ (ถ้าคุยกับ User ไว้ว่าไม่ให้รบกวน อาจจะข้ามไป แต่เป็นข้อมูลที่ดี)
+                if IS_ANALYSIS_MODE:
+                    logger.info(f"AI GUARD: REJECTED {signal} | Reason: {ai_result['reason']}")
+                
+                signal = "NONE" # ยกเลิกการเข้าออเดอร์
+            else:
+                logger.info(f"AI Gatekeeper Confirmed Signal. Reason: {ai_result['reason']} (Confidence: {ai_result['confidence']}%)")
+                if IS_ANALYSIS_MODE:
+                    logger.info(f"AI GUARD: CONFIRMED {signal} | Reason: {ai_result['reason']}")
+
+
+        # =========================
         # SL / TP
         # =========================
 
@@ -527,9 +567,14 @@ Buy Liquidity Sweep Detected
         # =========================
 
         if signal in ["BUY", "SELL"]:
-            write_bot_active_trade("1")
+            if not IS_ANALYSIS_MODE:
+                write_bot_active_trade("1")
 
-        write_signal(signal, sl, tp)
+        if not IS_ANALYSIS_MODE:
+            write_signal(signal, sl, tp)
+        else:
+            if signal != "NONE":
+                logger.info(f"ANALYSIS MODE: Signal '{signal}' identified but NOT written to file.")
 
         # =========================
         # LOSS DETECTION
@@ -544,7 +589,8 @@ Buy Liquidity Sweep Detected
         # LOG
         # =========================
 
-        logger.info(f"""
+        if IS_ANALYSIS_MODE:
+            logger.info(f"""
 ----------------------------------
 Positions: {current_positions}
 AI Signal: {ai_signal} ({rejection_reason if ai_signal == "NONE" else "Pattern Matched"})
@@ -555,6 +601,8 @@ TP: {tp}
 Trades today: {trades_today}
 Today PnL: {daily_pnl}
 ----------------------------------""")
+        elif signal != "NONE":
+            logger.info(f"Signal: {signal} | Price: {price} | PnL: {daily_pnl}")
 
         # =========================
         # 🤖 PERIODIC AI ANALYSIS REPORT

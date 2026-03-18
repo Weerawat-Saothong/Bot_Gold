@@ -6,8 +6,10 @@ import platform
 
 if platform.system() == "Windows":
     BASE_PATH = "C:\\Program Files\\MetaTrader 5 - Joe\\MQL5\\Files\\"
+    IS_ANALYSIS_MODE = False
 else:
     BASE_PATH = "/Users/x10/Library/Application Support/net.metaquotes.wine.metatrader5/drive_c/Program Files/MetaTrader 5/MQL5/Files/"
+    IS_ANALYSIS_MODE = True
 
 # =========================
 # FILE PATHS
@@ -41,8 +43,8 @@ BREAKEVEN_START = 3.0
 # =========================
 
 # Time Filter (Broker Time)
-TRADE_START_HOUR = 10  
-TRADE_END_HOUR = 21    
+TRADE_START_HOUR = 10
+TRADE_END_HOUR = 21
 
 # RSI Safe Zone (Optimized for more entries)
 RSI_BUY_MIN = 40       
@@ -86,3 +88,11 @@ USE_NEWS_FILTER = True
 NEWS_WAIT_MINUTES = 30  # Stop trading 30 min before/after high-impact news
 NEWS_CURRENCY = "USD"
 NEWS_IMPACT = "high"
+
+# =========================
+# AI GATEKEEPER SETTINGS
+# =========================
+USE_AI_GATEKEEPER = True
+AI_CONFIDENCE_THRESHOLD = 70
+AI_MODEL_NAME = "gemini-2.0-flash"
+AI_API_KEY = "AIzaSyCr_6PgLDrjHqxWnAEoezGkcIGx1XwPIXw"

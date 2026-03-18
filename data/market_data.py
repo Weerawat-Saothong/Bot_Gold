@@ -1,6 +1,9 @@
 import pandas as pd
 import os
+import logging
 from config import PATH_M5, PATH_H1
+
+logger = logging.getLogger(__name__)
 
 
 def load_file(path):
@@ -8,11 +11,11 @@ def load_file(path):
     try:
 
         if not os.path.exists(path):
-            print("File not found:", path)
+            logger.error(f"File not found: {path}")
             return None
 
         if os.path.getsize(path) == 0:
-            print("File empty:", path)
+            logger.info(f"File empty: {path}")
             return None
 
         df = pd.read_csv(path, sep="\t", header=None)
@@ -27,7 +30,7 @@ def load_file(path):
             df.columns = ["time","open","high","low","close"]
             df["volume"] = 1
         else:
-            print("Unexpected column count:", len(df.columns))
+            logger.error(f"Unexpected column count: {len(df.columns)}")
             return None
 
         df["time"] = pd.to_datetime(df["time"])
@@ -39,9 +42,7 @@ def load_file(path):
         return df
 
     except Exception as e:
-
-        print("Market data read error:", e)
-
+        logger.error(f"Market data read error: {e}")
         return None
 
 
