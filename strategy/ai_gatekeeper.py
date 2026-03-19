@@ -60,7 +60,7 @@ class AIGatekeeper:
         ส่งข้อมูลให้ AI และรับผลการตัดสินใจจริง
         """
         if not self.active:
-            return {"decision": "CONFIRM", "confidence": 100, "reason": "AI Disabled"}
+            return {"decision": "CONFIRM", "confidence": 70, "reason": "AI Disabled"}
 
         prompt = self.generate_prompt(market_state, signal_data)
         
