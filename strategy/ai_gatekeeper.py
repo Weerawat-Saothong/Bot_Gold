@@ -76,7 +76,7 @@ class AIGatekeeper:
         except Exception as e:
             logger.error(f"AI Gatekeeper Error: {e}")
             # กรณี Error ให้ปล่อยผ่านแบบ Technical ไปก่อนเพื่อความปลอดภัย
-            return {"decision": "CONFIRM", "confidence": 50, "reason": "AI Error, following technical signal"}
+            return {"decision": "CONFIRM", "confidence": 100, "reason": "AI Error, following technical signal"}
 
 # Global instance
 gatekeeper = AIGatekeeper()

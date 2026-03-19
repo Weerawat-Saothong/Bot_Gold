@@ -93,6 +93,9 @@ for i in range(len(df)):
         if ai_signal == "NONE":
             rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
             
+        if ai_signal in ["BUY_SWAN", "SELL_SWAN"]:
+            ai_signal = "BUY" if ai_signal == "BUY_SWAN" else "SELL"
+            
         if ai_signal in ["BUY", "SELL"]:
             sl, tp = calculate_sl_tp(window, ai_signal, last["close"])
             if sl and tp:

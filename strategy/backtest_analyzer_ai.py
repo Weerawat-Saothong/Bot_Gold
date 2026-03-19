@@ -2,6 +2,16 @@ import pandas as pd
 import os
 import logging
 import json
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+# Load environment variables
+load_dotenv()
+AI_API_KEY = os.getenv("AI_API_KEY")
+AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "gemini-2.0-flash")
+
+if AI_API_KEY:
+    genai.configure(api_key=AI_API_KEY)
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -10,6 +20,9 @@ logger = logging.getLogger(__name__)
 class BacktestAIAnalyzer:
     def __init__(self, csv_path="trades_analysis.csv"):
         self.csv_path = csv_path
+        self.active_ai = AI_API_KEY is not None
+        if self.active_ai:
+            self.model = genai.GenerativeModel(AI_MODEL_NAME)
         
     def load_data(self):
         if not os.path.exists(self.csv_path):
@@ -64,10 +77,22 @@ class BacktestAIAnalyzer:
         
         for i, prompt in enumerate(prompts):
             print(f"\n[Case {i+1}]")
-            print(prompt.strip())
-            # ในการใช้งานจริง จะส่ง prompt นี้ไปหา Gemini API
-            # ตัวอย่างการวิเคราะห์ของ AI (Mock)
-            print(">> AI Feedback (Mock): จังหวะนี้ RSI อยู่ในโซนก้ำกึ่ง และ ATR เริ่มลดลง แสดงถึงตลาดเริ่มขาดแรงส่ง (Loss of Momentum) ควรระวังการเข้าไม้สวนเทรนหลักในจังหวะนี้")
+            # print(prompt.strip()) # Hide prompt for cleaner output
+            
+            if self.active_ai:
+                import time
+                try:
+                    # Rate limit for free tier
+                    if i > 0:
+                        print("... Waiting for API quota reset (20s) ...")
+                        time.sleep(20)
+                    
+                    response = self.model.generate_content(prompt)
+                    print(f">> AI Analysis: {response.text.strip()}")
+                except Exception as e:
+                    print(f">> AI Error: {e}")
+            else:
+                print(">> AI Feedback (Offline): Please configure AI_API_KEY in .env to get live analysis.")
         
         print("\n" + "="*50)
         print("💡 STRATEGY SUGGESTION")
