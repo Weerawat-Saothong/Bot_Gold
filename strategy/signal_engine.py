@@ -239,23 +239,23 @@ def get_black_swan_signal(df):
     atr = last["atr"]
     rsi = last["rsi"]
     
-    # คำนวณค่าเฉลี่ย Volume ย้อนหลัง 14 แท่ง
-    avg_volume = df["volume"].iloc[-15:-1].mean()
-    current_volume = last["volume"]
-
     # ต้องมีความผันผวนระดับพายุลูกใหญ่
     if atr < BLACK_SWAN_ATR_MIN:
         return "NONE"
-        
-    # ต้องมีปริมาณซื้อขายหนาแน่น (ป้องกันรายย่อยสับหลอก)
-    if current_volume < (avg_volume * 1.5):
+    
+    # Volume check: ข้ามถ้าไม่มีข้อมูล volume จริง (ทุกค่าเป็น 1)
+    avg_volume = df["volume"].iloc[-15:-1].mean()
+    current_volume = last["volume"]
+    has_real_volume = df["volume"].iloc[-15:].nunique() > 1  # เช็คว่ามี volume จริงหรือไม่
+    
+    if has_real_volume and current_volume < (avg_volume * 1.5):
         return "NONE"
 
-    # ทุบสุดแรง
+    # ทุบสุดแรง (ขาลง)
     if rsi < BLACK_SWAN_RSI_SELL:
         return "SELL_SWAN"
     
-    # ลากสุดแรง
+    # ลากสุดแรง (ขาขึ้น)
     if rsi > BLACK_SWAN_RSI_BUY:
         return "BUY_SWAN"
 

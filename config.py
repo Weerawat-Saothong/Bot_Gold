@@ -58,15 +58,15 @@ RSI_SELL_MIN = 10
 RSI_SELL_MAX = 70      
 
 # Volatility Filter (Middle Ground)
-MAX_ATR_LIMIT = 15.0   
+MAX_ATR_LIMIT = 20.0    # เพิ่มจาก 15 เพื่อรองรับตลาดทองผันผวนสูง (ATR 10-15 ปกติในช่วง trend แรง)
 
 # =========================
 # BLACK SWAN (MOMENTUM) MODE
 # =========================
 ENABLE_BLACK_SWAN = True      
-BLACK_SWAN_ATR_MIN = 12.0    
-BLACK_SWAN_RSI_SELL = 13      
-BLACK_SWAN_RSI_BUY = 85
+BLACK_SWAN_ATR_MIN = 10.0     # ลดจาก 12 เพื่อให้ trigger ง่ายขึ้น
+BLACK_SWAN_RSI_SELL = 25      # เพิ่มจาก 13 (RSI ต่ำกว่า 13 แทบไม่มีทางเกิด)
+BLACK_SWAN_RSI_BUY = 75        # ลดจาก 85 เพื่อให้ trigger ได้ง่ายขึ้น
 
 
 # =========================
