@@ -640,8 +640,9 @@ TP: {tp}
 Trades today: {trades_today}
 Today PnL: {daily_pnl}
 ----------------------------------""")
-        elif signal != "NONE":
-            logger.info(f"Signal: {signal} | Price: {price} | PnL: {daily_pnl}")
+        else:
+            # Log ทุกรอบเพื่อให้เห็นว่าบอททำอะไรอยู่บน server
+            logger.info(f"[{signal}] AI: {ai_signal} ({rejection_reason if ai_signal == 'NONE' else 'OK'}) | Price: {price} | ATR: {round(last['atr'],2)} | RSI: {round(last['rsi'],1)} | Pos: {current_positions}")
 
         # =========================
         # 🤖 PERIODIC AI ANALYSIS REPORT
