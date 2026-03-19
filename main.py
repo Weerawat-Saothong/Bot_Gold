@@ -167,6 +167,12 @@ rejection_reasons = {}
 last_analysis_time = datetime.now(timezone.utc)
 ANALYSIS_INTERVAL_HOURS = 2 
 
+# ⚠️ ระบบเตือนข้อมูลค้าง (Stale Data Alert)
+last_stale_alert_time = None
+is_stale = False
+STALE_THRESHOLD_MINUTES = 15  # เตือนถ้าค้างเกิน 15 นาที
+STALE_COOLDOWN_MINUTES = 30   # เตือนซ้ำทุก 30 นาที
+
 
 
 # ======================================================
@@ -346,6 +352,34 @@ Bot in standby mode
         # =========================
         # TRADE COOLDOWN
         # =========================
+
+        # =========================
+        # ⚠️ STALE DATA CHECK (MODIFIED)
+        # =========================
+        try:
+            mtime = os.path.getmtime(PATH_M5)
+            diff_sec = time.time() - mtime
+            diff_min = diff_sec / 60
+            
+            if diff_min > STALE_THRESHOLD_MINUTES:
+                now_utc = datetime.now(timezone.utc)
+                if last_stale_alert_time is None or (now_utc - last_stale_alert_time).total_seconds() >= STALE_COOLDOWN_MINUTES * 60:
+                    
+                    logger.error(f"⚠️ DATA STALE: MT5 has not updated for {round(diff_min, 1)} minutes!")
+                    send_line(f"⚠️ GOLD BOT: DATA STALE\n\nข้อมูลจาก MT5 ไม่มีการอัพเดตมาเป็นเวลา {round(diff_min, 1)} นาทีแล้วครับ!\n\nกรุณาตรวจสอบ MT5 บน Server ด้วยนะครับ\n\n⏰ {thai_time.strftime('%H:%M')}")
+                    last_stale_alert_time = now_utc
+                    is_stale = True
+            
+            elif is_stale:
+                # Data recovered!
+                logger.info("✅ DATA RECOVERED: MT5 is updating again!")
+                send_line(f"✅ GOLD BOT: DATA RECOVERED\n\nข้อมูลจาก MT5 กลับมาอัพเดตปกติแล้วครับ\n\n⏰ {thai_time.strftime('%H:%M')}")
+                is_stale = False
+                last_stale_alert_time = None
+
+        except Exception as e:
+            logger.warning(f"Could not check data age: {e}")
+
 
         if candle_counter - last_trade_candle < TRADE_COOLDOWN:
 
