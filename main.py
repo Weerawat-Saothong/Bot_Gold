@@ -224,6 +224,7 @@ Bot in standby mode
 
 
         candle_counter += 1
+        ai_confidence = 0 # Initialize confidence per iteration
 
         # =========================
         # RESET DAILY
@@ -574,6 +575,7 @@ Buy Liquidity Sweep Detected
             }
             
             ai_result = gatekeeper.validate_signal(market_state, signal_data)
+            ai_confidence = ai_result.get('confidence', 0) # เก็บค่าความมั่นใจไว้ใช้คำนวณ Lot
             
             if ai_result['decision'] == "REJECT" or ai_result['confidence'] < AI_CONFIDENCE_THRESHOLD:
                 logger.info(f"AI Gatekeeper Rejected Signal. Reason: {ai_result['reason']} (Confidence: {ai_result['confidence']}%)")
