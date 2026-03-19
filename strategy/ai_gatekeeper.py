@@ -1,7 +1,8 @@
 import logging
 import json
+import re
 import google.generativeai as genai
-from config import AI_API_KEY, AI_MODEL_NAME, IS_ANALYSIS_MODE
+from config import AI_API_KEY, AI_MODEL_NAME, IS_ANALYSIS_MODE, AI_CONFIDENCE_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -9,9 +10,12 @@ class AIGatekeeper:
     def __init__(self):
         if AI_API_KEY and AI_API_KEY != "YOUR_API_KEY_HERE":
             genai.configure(api_key=AI_API_KEY)
-            self.model = genai.GenerativeModel(AI_MODEL_NAME)
+            self.model = genai.GenerativeModel(
+                model_name=AI_MODEL_NAME,
+                generation_config={"response_mime_type": "application/json"}
+            )
             self.active = True
-            logger.info(f"AI Gatekeeper initialized with model: {AI_MODEL_NAME}")
+            logger.info(f"AI Gatekeeper initialized with model: {AI_MODEL_NAME} (JSON Mode Enabled)")
         else:
             self.active = False
             logger.warning("AI Gatekeeper is disabled: No valid API Key found.")
@@ -42,7 +46,7 @@ class AIGatekeeper:
         3. หากทุกอย่างสอดคล้องกัน ให้ CONFIRM ด้วยความมั่นใจสูง
         
         [คำสั่ง]
-        ให้ตอบกลับในรูปแบบ JSON ที่ถูกต้องเท่านั้น (Strict JSON format):
+        ตอบกลับเป็น JSON OBJECT เท่านั้น ห้ามเขียนเนื้อหาอื่นนอกเหนือจาก JSON:
         {{
             "decision": "CONFIRM" หรือ "REJECT",
             "confidence": 0-100,
@@ -56,27 +60,43 @@ class AIGatekeeper:
         ส่งข้อมูลให้ AI และรับผลการตัดสินใจจริง
         """
         if not self.active:
-            return {"decision": "CONFIRM", "confidence": 100, "reason": "AI Disabled (Using Technical Only)"}
+            return {"decision": "CONFIRM", "confidence": 100, "reason": "AI Disabled"}
 
         prompt = self.generate_prompt(market_state, signal_data)
         
         try:
             response = self.model.generate_content(prompt)
-            # พยายามดึง JSON ออกจากคำตอบของ AI
             text_response = response.text.strip()
-            # ตัดเครื่องหมาย ```json ... ``` ออกถ้ามี
-            if "```json" in text_response:
-                text_response = text_response.split("```json")[1].split("```")[0].strip()
-            elif "```" in text_response:
-                text_response = text_response.split("```")[1].split("```")[0].strip()
             
-            result = json.loads(text_response)
-            logger.info(f"AI Response: {result['decision']} ({result['confidence']}%) - {result['reason']}")
+            # Robust JSON cleaning using regex
+            # Find the first '{' and the last '}'
+            match = re.search(r'\{.*\}', text_response, re.DOTALL)
+            if match:
+                json_str = match.group(0)
+            else:
+                json_str = text_response
+
+            result = json.loads(json_str)
+            
+            # Validate essential keys
+            if 'decision' not in result or 'confidence' not in result:
+                raise ValueError("Missing essential keys in AI JSON response")
+
+            logger.info(f"AI Decision: {result['decision']} ({result['confidence']}%) - {result.get('reason', 'N/A')}")
             return result
+            
         except Exception as e:
-            logger.error(f"AI Gatekeeper Error: {e}")
-            # กรณี Error ให้ปล่อยผ่านแบบ Technical ไปก่อนเพื่อความปลอดภัย
-            return {"decision": "CONFIRM", "confidence": 100, "reason": "AI Error, following technical signal"}
+            logger.error(f"AI Gatekeeper Error (Quota/Parsing): {e}")
+            if 'text_response' in locals():
+                logger.error(f"Raw AI Response: {text_response}")
+            
+            # Fallback: ปล่อยผ่าน 100% ตามคำขอของผู้ใช้ (กรณีโควต้าฟรีหมด)
+            return {
+                "decision": "CONFIRM", 
+                "confidence": 100, 
+                "reason": f"AI Error/Quota ({str(e)[:30]}), Following Technical"
+            }
 
 # Global instance
 gatekeeper = AIGatekeeper()
+
