@@ -644,7 +644,13 @@ Buy Liquidity Sweep Detected
                 write_bot_active_trade("1")
 
         if not IS_ANALYSIS_MODE:
-            write_signal(signal, sl, tp)
+            # คำนวณ Lot ตามความมั่นใจของ AI
+            trade_lot = BASE_LOT
+            if ai_confidence >= 90:
+                trade_lot = HIGH_CONFIDENCE_LOT
+                logger.info(f"🔥 HIGH CONFIDENCE TRADE: Increasing lot to {trade_lot}")
+            
+            write_signal(signal, sl, tp, trade_lot)
         else:
             if signal != "NONE":
                 logger.info(f"ANALYSIS MODE: Signal '{signal}' identified but NOT written to file.")

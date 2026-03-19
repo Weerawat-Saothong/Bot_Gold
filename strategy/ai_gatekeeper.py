@@ -90,10 +90,10 @@ class AIGatekeeper:
             if 'text_response' in locals():
                 logger.error(f"Raw AI Response: {text_response}")
             
-            # Fallback: ปล่อยผ่าน 100% ตามคำขอของผู้ใช้ (กรณีโควต้าฟรีหมด)
+            # Fallback: ปล่อยผ่านด้วยความมั่นใจ 70 (ให้ผ่านด่านแต่ไม่เบิ้ล Lot)
             return {
                 "decision": "CONFIRM", 
-                "confidence": 100, 
+                "confidence": 70, # เปลี่ยนจาก 100 เป็น 70 เพื่อไม่ให้เข้าเงื่อนไข High Confidence (90+)
                 "reason": f"AI Error/Quota ({str(e)[:30]}), Following Technical"
             }
 

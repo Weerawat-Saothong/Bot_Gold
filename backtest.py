@@ -36,10 +36,15 @@ losses = 0
 trades = 0
 rejection_reasons = {}
 
-print(f"Starting Backtest on {len(df)} candles...")
+# Optimization: Run only on last 10,000 candles for quick feedback
+TEST_COUNT = 10000
+start_idx = len(df) - TEST_COUNT
+if start_idx < 100: start_idx = 100
 
-for i in range(len(df)):
-    if i < 100: continue
+print(f"Starting Backtest on LAST {TEST_COUNT} candles...")
+
+for i in range(start_idx, len(df)):
+    # if i < 100: continue # Handled by start_idx
     
     window = df.iloc[:i+1]
     last = window.iloc[-1]
