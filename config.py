@@ -116,3 +116,8 @@ USE_AI_GATEKEEPER = True
 AI_CONFIDENCE_THRESHOLD = 70
 AI_MODEL_NAME = "gemini-2.0-flash"
 AI_API_KEY = os.getenv("AI_API_KEY", "YOUR_API_KEY_HERE")
+
+# =========================
+# OVEREXTENDED FILTER (PREVENT PEAK/BOTTOM ENTRY)
+# =========================
+MAX_EMA_ATR_DISTANCE = 5.0      # ถ้าห่างจาก EMA50 เกิน 5.0 เท่าของ ATR บอทจะหยุดเข้าไม้ (ป้องกันปลายไส้)

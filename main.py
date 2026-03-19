@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from config import *
 from data.market_data import get_market_data, get_market_data_htf
-from strategy.signal_engine import create_features, get_signal, market_structure
+from strategy.signal_engine import get_signal, create_features, is_overextended, market_structure
 from execution.signal_writer import write_signal
 from risk.risk_engine import calculate_sl_tp
 from notify.line_notify import send_line
@@ -556,6 +556,13 @@ Buy Liquidity Sweep Detected
         # =========================
         # AI GATEKEEPER VALIDATION (NEW)
         # =========================
+        if signal in ["BUY", "SELL"]:
+            # 🛑 BREAK: CHECK OVEREXTENDED (ป้องกันดอย/เหว)
+            if is_overextended(price, last['ema50'], last['atr'], signal):
+                logger.info(f"🚫 BLOCKING {signal}: Overextended (Price too far from EMA50)")
+                if not IS_ANALYSIS_MODE:
+                    send_line(f"🚫 {signal} CANCELLED\n\nบอทระงับสัญญาณ {signal} เพราะราคาอยู่ห่างจากเส้น EMA มากเกินไป (เสี่ยงปลายไส้)\n\n💰 Price: {round(price,2)}\n⏰ {thai_time.strftime('%H:%M')}")
+                signal = "NONE"
 
         if signal in ["BUY", "SELL"] and USE_AI_GATEKEEPER:
             

@@ -1,14 +1,15 @@
 import pandas as pd
+import logging
 from datetime import datetime, timezone
 from config import *
 
+logger = logging.getLogger(__name__)
 
 # ------------------------
 # CREATE FEATURES
 # ------------------------
 
 def create_features(df):
-
     if hasattr(df.columns, "levels"):
         df.columns = df.columns.get_level_values(0)
 
@@ -29,212 +30,127 @@ def create_features(df):
 
     avg_gain = gain.rolling(14).mean()
     avg_loss = loss.rolling(14).mean()
-
+    
     rs = avg_gain / avg_loss
     df["rsi"] = 100 - (100 / (1 + rs))
 
-    # ATR
+    # ATR (Volatility)
     high_low = df["high"] - df["low"]
     high_close = (df["high"] - df["close"].shift()).abs()
     low_close = (df["low"] - df["close"].shift()).abs()
-
-    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-    df["atr"] = tr.rolling(14).mean()
-
-    df = df.dropna()
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = ranges.max(axis=1)
+    df["atr"] = true_range.rolling(14).mean()
 
     return df
 
-
 # ------------------------
-# SESSION FILTER
+# SECONDARY FILTERS
 # ------------------------
 
 def session_filter():
-
     now = datetime.now(timezone.utc)
-
-    hour = now.hour
-    day = now.weekday()
-
-    if day >= 5:
+    if now.weekday() >= 5: # Sat/Sun
         return False
-
     return True
 
+def range_filter(df):
+    last = df.iloc[-1]
+    candle_range = last["high"] - last["low"]
+    return candle_range <= CANDLE_RANGE_THRESHOLD
+
+def distance_filter(df):
+    last = df.iloc[-1]
+    ema = last["ema50"]
+    dist = abs(last["close"] - ema)
+    return dist >= MIN_DISTANCE_FOR_SIGNAL
+
+def trend_strength_filter(df):
+    last = df.iloc[-1]
+    ema50 = last["ema50"]
+    ema200 = last["ema200"]
+    diff = abs(ema50 - ema200)
+    
+    if diff > (last["atr"] * 2):
+        return True, "STRONG"
+    elif diff > (last["atr"] * 0.5):
+        return True, "STABLE"
+    return False, "RANGE"
+
+def volatility_expansion(df):
+    last = df.iloc[-1]
+    avg_atr = df["atr"].iloc[-20:-1].mean()
+    return last["atr"] > (avg_atr * ATR_VOLATILITY_MULTIPLIER)
 
 # ------------------------
-# MARKET STRUCTURE
+# MARKET STRUCTURE LOGIC
 # ------------------------
 
 def market_structure(df):
-
-    highs = df["high"].iloc[-MARKET_STRUCTURE_PERIOD:]
-    lows = df["low"].iloc[-MARKET_STRUCTURE_PERIOD:]
-
-    if highs.iloc[-1] > highs.iloc[-2] and lows.iloc[-1] > lows.iloc[-2]:
-        return "HH"
-
-    if highs.iloc[-1] < highs.iloc[-2] and lows.iloc[-1] < lows.iloc[-2]:
-        return "LL"
-
-    if highs.iloc[-1] < highs.iloc[-2] and lows.iloc[-1] > lows.iloc[-2]:
-        return "HL"
-
-    if highs.iloc[-1] > highs.iloc[-2] and lows.iloc[-1] < lows.iloc[-2]:
-        return "LH"
-
-    return "RANGE"
-
-
-# ------------------------
-# TREND STRENGTH
-# ------------------------
-
-def trend_strength_filter(df, period=200):
-    last = df.iloc[-1]
-    strength = abs(last["ema50"] - last["ema200"])
-    if strength < 0.2:
-        return False, "RANGE"
-    return True, "TRENDING"
-
-
-# ------------------------
-# LIQUIDITY SWEEP
-# ------------------------
-
-def liquidity_sweep(df):
-
-    last = df.iloc[-1]
-
-    recent_high = df["high"].iloc[-(LIQUIDITY_LOOKBACK+1):-1].max()
-    recent_low = df["low"].iloc[-(LIQUIDITY_LOOKBACK+1):-1].min()
-
-    if last["high"] > recent_high and last["close"] < recent_high:
-        return "SELL_SWEEP"
-
-    if last["low"] < recent_low and last["close"] > recent_low:
-        return "BUY_SWEEP"
-
-    return None
-
-
-# ------------------------
-# BREAKOUT
-# ------------------------
-
-def breakout_detection(df):
-
-    last = df.iloc[-1]
-
-    recent_high = df["high"].iloc[-(LIQUIDITY_LOOKBACK+1):-1].max()
-    recent_low = df["low"].iloc[-(LIQUIDITY_LOOKBACK+1):-1].min()
-
-    if last["close"] > recent_high:
-        return "BREAKOUT_BUY"
-
-    if last["close"] < recent_low:
-        return "BREAKOUT_SELL"
-
-    return None
-
-
-# ------------------------
-# FAKE BREAKOUT
-# ------------------------
-
-def fake_breakout(df):
-
     last = df.iloc[-1]
     prev = df.iloc[-2]
+    
+    if last["high"] > prev["high"] and last["low"] > prev["low"]:
+        return "HH" # Higher High
+    if last["high"] < prev["high"] and last["low"] < prev["low"]:
+        return "LL" # Lower Low
+    if last["high"] < prev["high"] and last["low"] > prev["low"]:
+        return "INSIDE"
+    
+    # Check for swings
+    if last["low"] > df["low"].iloc[-5:].min():
+        return "HL" # Higher Low
+    if last["high"] < df["high"].iloc[-5:].max():
+        return "LH" # Lower High
+        
+    return "NONE"
 
-    recent_high = df["high"].iloc[-(LIQUIDITY_LOOKBACK+1):-1].max()
-    recent_low = df["low"].iloc[-(LIQUIDITY_LOOKBACK+1):-1].min()
-
-    if prev["close"] > recent_high and last["close"] < recent_high:
-        return "FAKE_BUY"
-
-    if prev["close"] < recent_low and last["close"] > recent_low:
-        return "FAKE_SELL"
-
-    return None
-
-
-# ------------------------
-# RANGE FILTER
-# ------------------------
-
-def range_filter(df):
-
+def breakout_detection(df):
     last = df.iloc[-1]
+    high_20 = df["high"].iloc[-20:-1].max()
+    low_20 = df["low"].iloc[-20:-1].min()
+    
+    if last["close"] > high_20:
+        return "BREAKOUT_BUY"
+    if last["close"] < low_20:
+        return "BREAKOUT_SELL"
+    return "NONE"
 
-    candle_range = last["high"] - last["low"]
-
-    if candle_range > CANDLE_RANGE_THRESHOLD:
-        return False
-
-    return True
-
-
-def distance_filter(df):
-
-    if len(df) < 5: return True
-    last = df.iloc[-1]["close"]
-    prev = df.iloc[-5]["close"]
-
-    if abs(last - prev) < MIN_DISTANCE_FOR_SIGNAL:
-        return False
-
-    return True
-
-
-# ------------------------
-# VOLATILITY EXPANSION
-# ------------------------
-
-def volatility_expansion(df):
-
-    atr_now = df["atr"].iloc[-1]
-    atr_prev = df["atr"].iloc[-5:-1].mean()
-
-    # Optimized for more entries
-    if atr_now > atr_prev * 1.05 or atr_now > ATR_MIN_VOLATILITY:
-        return True
-
-    return False
-
-def check_pullback(df, trend="UP"):
+def liquidity_sweep(df):
     last = df.iloc[-1]
-    # Price near EMA20 or EMA50 (within 0.3 ATR)
-    atr = last["atr"]
-    dist_20 = abs(last["close"] - last["ema20"])
-    dist_50 = abs(last["close"] - last["ema50"])
+    high_lookback = df["high"].iloc[-LIQUIDITY_LOOKBACK:-1].max()
+    low_lookback = df["low"].iloc[-LIQUIDITY_LOOKBACK:-1].min()
+    
+    if last["high"] > high_lookback and last["close"] < high_lookback:
+        return "SELL_SWEEP"
+    if last["low"] < low_lookback and last["close"] > low_lookback:
+        return "BUY_SWEEP"
+    return "NONE"
+
+# ------------------------
+# SIGNAL STRATEGIES
+# ------------------------
+
+def check_pullback(df, trend):
+    last = df.iloc[-1]
+    ema = last["ema50"]
+    rsi = last["rsi"]
     
     if trend == "UP":
-        if last["close"] > last["ema20"] and dist_20 < atr * 0.4:
-            return True, "EMA20 Pullback"
-        if last["close"] > last["ema50"] and dist_50 < atr * 0.4:
-            return True, "EMA50 Pullback"
+        if last["low"] <= ema and last["close"] > ema and rsi < 60:
+            return True, "Pullback Buy at EMA50"
     else:
-        if last["close"] < last["ema20"] and dist_20 < atr * 0.4:
-            return True, "EMA20 Pullback"
-        if last["close"] < last["ema50"] and dist_50 < atr * 0.4:
-            return True, "EMA50 Pullback"
-            
-    return False, None
+        if last["high"] >= ema and last["close"] < ema and rsi > 40:
+            return True, "Pullback Sell at EMA50"
+    return False, ""
 
-
-# ------------------------
-# SIGNAL ENGINE
-# ------------------------
-
-# ------------------------
-# BLACK SWAN (MOMENTUM) SIGNAL
-# ------------------------
 def get_black_swan_signal(df):
+    """
+    ตรวจจับความผันผวนรุนแรง (กระชากบ้าคลั่ง)
+    """
     if not ENABLE_BLACK_SWAN:
         return "NONE"
-
+        
     last = df.iloc[-1]
     atr = last["atr"]
     rsi = last["rsi"]
@@ -246,7 +162,7 @@ def get_black_swan_signal(df):
     # Volume check: ข้ามถ้าไม่มีข้อมูล volume จริง (ทุกค่าเป็น 1)
     avg_volume = df["volume"].iloc[-15:-1].mean()
     current_volume = last["volume"]
-    has_real_volume = df["volume"].iloc[-15:].nunique() > 1  # เช็คว่ามี volume จริงหรือไม่
+    has_real_volume = df["volume"].iloc[-15:].nunique() > 1
     
     if has_real_volume and current_volume < (avg_volume * 1.5):
         return "NONE"
@@ -261,42 +177,43 @@ def get_black_swan_signal(df):
 
     return "NONE"
 
+def is_overextended(price, ema, atr, direction):
+    """
+    เช็คว่าราคาห่างจาก EMA มากเกินไปจนมีความเสี่ยงว่าจะดีดกลับหรือไม่
+    """
+    dist = abs(price - ema)
+    limit = atr * MAX_EMA_ATR_DISTANCE
+    
+    if dist > limit:
+        # ถ้าราคาอยู่ต่ำกว่า EMA มากๆ (SELL) แล้วยังจะ SELL ต่อ -> เสี่ยงปลายไส้
+        if direction == "SELL" and price < ema:
+            return True
+        # ถ้าราคาอยู่สูงกว่า EMA มากๆ (BUY) แล้วยังจะ BUY ต่อ -> เสี่ยงยอดดอย
+        if direction == "BUY" and price > ema:
+            return True
+            
+    return False
+
+# ------------------------
+# MAIN SIGNAL ENGINE
+# ------------------------
+
 def get_signal(df, df_htf):
-
     if len(df) < 50 or len(df_htf) < 50:
-        return "NONE", "Insufficient data (need 50+ candles)"
+        return "NONE", "Insufficient data"
 
-    prev = df.iloc[-2]
     last = df.iloc[-1]
+    prev = df.iloc[-2]
     last_htf = df_htf.iloc[-1]
-
+    
+    price = last["close"]
     rsi = last["rsi"]
     atr = last["atr"]
 
-    # 1. TIME FILTER (Broker Time)
-    if "datetime" in last:
-        current_hour = last["datetime"].hour
-    else:
-        current_hour = datetime.now().hour
-
-    if not (TRADE_START_HOUR <= current_hour <= TRADE_END_HOUR):
-        return "NONE", f"Outside trading hours ({current_hour}:00)"
-
-    # 2. BLACK SWAN EMERGENCY OVERRIDE
-    swan_signal = get_black_swan_signal(df)
-    if swan_signal != "NONE":
-        return swan_signal, f"Black Swan Event Detected (ATR: {round(atr,2)}, RSI: {round(rsi,2)})"
-
-    # 3. NORMAL VOLATILITY LIMIT
-    if atr > MAX_ATR_LIMIT:
-        return "NONE", f"High volatility (ATR: {round(atr,2)} > {MAX_ATR_LIMIT})"
-
-    # LTF TREND
+    # TREND ANALYSIS
     trend_up = last["ema50"] > last["ema200"]
     trend_down = last["ema50"] < last["ema200"]
-
-    # HTF TREND & STRENGTH (กล้องส่องทางไกล)
-    htf_ok, htf_mode = trend_strength_filter(df_htf)
+    
     htf_up = last_htf["ema50"] > last_htf["ema200"]
     htf_down = last_htf["ema50"] < last_htf["ema200"]
 
@@ -324,20 +241,24 @@ def get_signal(df, df_htf):
         return "NONE", "Flat range market (ATR < 0.8)"
 
     if not volatility_expansion(df):
-        # Relaxed: Only check if ATR is extremely low
         if atr < 0.5:
             return "NONE", "No volatility expansion detected"
 
+    # BLACK SWAN (High Priority)
+    swan = get_black_swan_signal(df)
+    if swan != "NONE":
+        if swan == "BUY_SWAN": return "BUY", "Black Swan Momentum Buy"
+        if swan == "SELL_SWAN": return "SELL", "Black Swan Momentum Sell"
+
     # SIGNAL GENERATION
-    # 1. LIQUIDITY SWEEP (High Priority)
+    # 1. LIQUIDITY SWEEP
     if trend_up and sweep == "BUY_SWEEP" and momentum_up and rsi < RSI_BUY_MAX:
         return "BUY", "Liquidity Sweep Buy"
     if trend_down and sweep == "SELL_SWEEP" and momentum_down and rsi > RSI_SELL_MIN:
         return "SELL", "Liquidity Sweep Sell"
 
-    # 2. PULLBACK & STRUCTURE (Relaxed HTF)
-    # Allow BUY if HTF is UP OR HTF is RANGE
-    if trend_up and (htf_up or htf_mode == "RANGE"):
+    # 2. PULLBACK & STRUCTURE
+    if trend_up and (htf_up or ltf_mode == "RANGE"):
         pb_ok, pb_msg = check_pullback(df, "UP")
         if pb_ok and momentum_up and rsi < 75:
             return "BUY", pb_msg
@@ -348,8 +269,7 @@ def get_signal(df, df_htf):
         if breakout == "BREAKOUT_BUY" and rsi <= RSI_BUY_MAX and momentum_up:
             return "BUY", "Breakout Buy"
 
-    # Allow SELL if HTF is DOWN OR HTF is RANGE
-    if trend_down and (htf_down or htf_mode == "RANGE"):
+    if trend_down and (htf_down or ltf_mode == "RANGE"):
         pb_ok, pb_msg = check_pullback(df, "DOWN")
         if pb_ok and momentum_down and rsi > RSI_SELL_MIN:
             return "SELL", pb_msg
