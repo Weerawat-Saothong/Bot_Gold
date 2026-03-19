@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from config import *
 from data.market_data import get_market_data, get_market_data_htf
-from strategy.signal_engine import create_features, get_signal
+from strategy.signal_engine import create_features, get_signal, market_structure
 from execution.signal_writer import write_signal
 from risk.risk_engine import calculate_sl_tp
 from notify.line_notify import send_line
