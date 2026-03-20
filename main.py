@@ -102,6 +102,15 @@ def write_bot_active_trade(state):
     except Exception as e:
         logger.error(f"Error writing trade flag: {e}")
 
+def write_bot_active_trade_dir(direction):
+    try:
+        if IS_ANALYSIS_MODE:
+            return
+        with open(BASE_PATH + "bot_active_trade_dir.txt", "w") as f:
+            f.write(str(direction))
+    except Exception as e:
+        logger.error(f"Error writing trade direction: {e}")
+
 
 def gold_market_open(thai_time):
 
@@ -143,6 +152,16 @@ account_balance = 0
 current_positions = 0
 daily_pnl = 0
 daily_loss_alert_sent = False
+
+active_trade_direction = None
+try:
+    with open(BASE_PATH + "bot_active_trade_dir.txt") as f:
+        val = f.read().strip()
+        if val in ["BUY", "SELL"]:
+            active_trade_direction = val
+except:
+    pass
+
 
 # Check if trade file is from a previous day (for startup reset)
 try:
@@ -302,6 +321,9 @@ Bot in standby mode
 
         if current_positions == 0:
             last_entry_price = None
+            if active_trade_direction is not None:
+                active_trade_direction = None
+                write_bot_active_trade_dir("NONE")
             if bot_trade_flag != "0":
                 write_bot_active_trade("0")
 
@@ -528,11 +550,11 @@ Bot in standby mode
             atr = last["atr"]
 
             # Exit BUY only if trend is steep down (Reversal)
-            if trend_state == "STEEP_DOWN":
+            if trend_state == "STEEP_DOWN" and active_trade_direction == "BUY":
                 logger.warning(f"⚠️ EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_BUY"
             # Exit SELL only if trend is steep up (Reversal)
-            elif trend_state == "STEEP_UP":
+            elif trend_state == "STEEP_UP" and active_trade_direction == "SELL":
                 logger.warning(f"⚠️ EMERGENCY EXIT SELL: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_SELL"
 
@@ -559,7 +581,7 @@ Bot in standby mode
                 sweep = "BUY_SWEEP"
 
             # EXIT BUY
-            if sweep == "SELL_SWEEP" and momentum_down:
+            if sweep == "SELL_SWEEP" and momentum_down and active_trade_direction == "BUY":
 
                 logger.info("Liquidity Exit BUY")
 
@@ -575,7 +597,7 @@ Sell Liquidity Sweep Detected
 """)
 
             # EXIT SELL
-            elif sweep == "BUY_SWEEP" and momentum_up:
+            elif sweep == "BUY_SWEEP" and momentum_up and active_trade_direction == "SELL":
 
                 logger.info("Liquidity Exit SELL")
 
@@ -690,6 +712,8 @@ Buy Liquidity Sweep Detected
         if signal in ["BUY", "SELL"]:
             if not IS_ANALYSIS_MODE:
                 write_bot_active_trade("1")
+                write_bot_active_trade_dir(signal)
+                active_trade_direction = signal
 
                 # ⚖️ DYNAMIC LOT CALCULATION (คำนวณตามความเสี่ยงจริง)
                 # สูตร: Lot = Risk_USD / (SL_Distance * ContractSize)
