@@ -143,11 +143,29 @@ def check_pullback(df, trend):
     rsi = last["rsi"]
     
     if trend == "UP":
-        if last["low"] <= ema and last["close"] > ema and rsi < 60:
+        if last["low"] <= ema and last["close"] > ema:
             return True, "Pullback Buy at EMA50"
     else:
-        if last["high"] >= ema and last["close"] < ema and rsi > 40:
+        if last["high"] >= ema and last["close"] < ema:
             return True, "Pullback Sell at EMA50"
+    return False, ""
+
+def check_continuation(df, trend):
+    """
+    ตรวจจับโครงสร้างเทรนด์เรียงตัวกัน (Continuation)
+    """
+    last = df.iloc[-1]
+    ema20 = last["ema20"]
+    ema50 = last["ema50"]
+    ema200 = last["ema200"]
+    
+    if trend == "UP":
+        if ema20 > ema50 > ema200 and last["close"] > ema20:
+            return True, "EMA Trend Continuation Buy"
+    else:
+        if ema20 < ema50 < ema200 and last["close"] < ema20:
+            return True, "EMA Trend Continuation Sell"
+            
     return False, ""
 
 def get_black_swan_signal(df):
@@ -293,13 +311,16 @@ def get_signal(df, df_htf):
         return "SELL", "Liquidity Sweep Sell"
 
     # 2. PULLBACK & STRUCTURE
-    if trend_up and (htf_up or ltf_mode == "RANGE"):
+    if trend_up and (htf_up or ltf_mode != "RANGE"):
         pb_ok, pb_msg = check_pullback(df, "UP")
-        if pb_ok and momentum_up and rsi < 75:
-            # Check for Overextended or Steep Down
+        if pb_ok and momentum_up and rsi < RSI_BUY_MAX:
             if trend_state == "STEEP_DOWN": return "NONE", f"Blocked: Steep Down Trend (Slope: {slope:.2f})"
             if is_overextended(price, last["ema50"], atr, "BUY"): return "NONE", "Blocked: Price Overextended (Buy at top)"
             return "BUY", pb_msg
+
+        cont_ok, cont_msg = check_continuation(df, "UP")
+        if cont_ok and rsi < RSI_BUY_MAX:
+             return "BUY", cont_msg
             
         if structure == "HL" and RSI_BUY_MIN <= rsi <= RSI_BUY_MAX and momentum_up:
             if trend_state == "STEEP_DOWN": return "NONE", f"Blocked: Steep Down Trend (Slope: {slope:.2f})"
@@ -311,13 +332,16 @@ def get_signal(df, df_htf):
             if is_overextended(price, last["ema50"], atr, "BUY"): return "NONE", "Blocked: Price Overextended (Buy at top)"
             return "BUY", "Breakout Buy"
 
-    if trend_down and (htf_down or ltf_mode == "RANGE"):
+    if trend_down and (htf_down or ltf_mode != "RANGE"):
         pb_ok, pb_msg = check_pullback(df, "DOWN")
         if pb_ok and momentum_down and rsi > RSI_SELL_MIN:
-            # Check for Overextended or Steep Up
             if trend_state == "STEEP_UP": return "NONE", f"Blocked: Steep Up Trend (Slope: {slope:.2f})"
             if is_overextended(price, last["ema50"], atr, "SELL"): return "NONE", "Blocked: Price Overextended (Sell at bottom)"
             return "SELL", pb_msg
+
+        cont_ok, cont_msg = check_continuation(df, "DOWN")
+        if cont_ok and rsi > RSI_SELL_MIN:
+             return "SELL", cont_msg
 
         if structure == "LH" and RSI_SELL_MIN <= rsi <= RSI_SELL_MAX and momentum_down:
             if trend_state == "STEEP_UP": return "NONE", f"Blocked: Steep Up Trend (Slope: {slope:.2f})"

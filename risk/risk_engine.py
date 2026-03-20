@@ -28,7 +28,7 @@ def calculate_sl_tp(df, signal, price):
     swing_high = find_last_swing_high(df)
 
     atr_buffer = atr * 0.5
-    rr = 2
+    rr = 1.5
 
     min_risk = atr * 0.3
 

@@ -47,16 +47,16 @@ HIGH_CONFIDENCE_LOT = 0.02      # ล๊อตเมื่อ AI มั่นใ
 USE_TRAILING_STOP = False
 USE_BREAKEVEN = False    
 
-TRAILING_START = 25.0    # แก้จาก 5.0 เป็น 25.0 ($25)
-TRAILING_STEP = 5.0      # แก้จาก 1.0 เป็น 5.0 ($5)
-BREAKEVEN_START = 15.0   # แก้จาก 3.0 เป็น 15.0 ($15)
+TRAILING_START = 30.0    
+TRAILING_STEP = 5.0      
+BREAKEVEN_START = 20.0   
 
 # =========================
 # SAFETY FILTERS
 # =========================
 STRICT_TREND_FILTER = True  # ห้ามสวนเทรนด์เมื่อ EMA ชันมากๆ
-MAX_EMA_SLOPE = 0.1         # แก้จาก 1.0 เป็น 0.1 (เข้มงวดขึ้น 10 เท่า)
-MAX_EMA_ATR_DISTANCE = 5.0   # ระยะห่าง EMA สูงสุด (ATR)
+MAX_EMA_SLOPE = 0.2         # ปรับจาก 0.5 เป็น 0.2 (สมดุลขึ้น)
+MAX_EMA_ATR_DISTANCE = 4.0   # ปรับจาก 8.0 เป็น 4.0 (ป้องกันปลายยอด)
 
 # =========================
 # SIGNAL FILTERS (Balanced Mode)
@@ -66,11 +66,11 @@ MAX_EMA_ATR_DISTANCE = 5.0   # ระยะห่าง EMA สูงสุด (
 TRADE_START_HOUR = 0
 TRADE_END_HOUR = 23
 
-# RSI Safe Zone (Middle Ground - More Aggressive)
-RSI_BUY_MIN = 30       
-RSI_BUY_MAX = 90       
-RSI_SELL_MIN = 10      
-RSI_SELL_MAX = 70      
+# RSI Safe Zone (More Selective for Higher Winrate)
+RSI_BUY_MIN = 40       
+RSI_BUY_MAX = 70       
+RSI_SELL_MIN = 30      
+RSI_SELL_MAX = 60      
 
 # Volatility Filter (Middle Ground)
 MAX_ATR_LIMIT = 20.0    # เพิ่มจาก 15 เพื่อรองรับตลาดทองผันผวนสูง (ATR 10-15 ปกติในช่วง trend แรง)
@@ -103,12 +103,12 @@ DAILY_RISK_PERCENT = 0.10
 # SIGNAL SETTINGS
 # =========================
 
-MIN_DISTANCE_FOR_SIGNAL = 0.5
-ATR_VOLATILITY_MULTIPLIER = 1.05
-ATR_MIN_VOLATILITY = 1.2
-CANDLE_RANGE_THRESHOLD = 30
+MIN_DISTANCE_FOR_SIGNAL = 0.1   # ลดจาก 0.5 เพื่อให้เข้าได้ใกล้ EMA มากขึ้น
+ATR_VOLATILITY_MULTIPLIER = 1.0
+ATR_MIN_VOLATILITY = 0.8        # ลดจาก 1.2 เพื่อให้เทรดได้ในตลาดปกติ
+CANDLE_RANGE_THRESHOLD = 80     # เพิ่มจาก 30 เพื่อรองรับแท่งเทียนที่ใหญ่ขึ้นในทองคำ
 MARKET_STRUCTURE_PERIOD = 5
-LIQUIDITY_LOOKBACK = 21
+LIQUIDITY_LOOKBACK = 14         # ปรับจาก 21 เพื่อให้หาจุด Sweep ได้เร็วขึ้น
 
 # =========================
 # NEWS FILTER SETTINGS
