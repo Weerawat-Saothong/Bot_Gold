@@ -96,6 +96,7 @@ def read_price():
 def write_bot_active_trade(state):
     try:
         if IS_ANALYSIS_MODE:
+            logger.debug(f"(analysis mode) skip writing bot_active_trade: {state}")
             return
         with open(BASE_PATH + "bot_active_trade.txt", "w") as f:
             f.write(str(state))
@@ -104,10 +105,10 @@ def write_bot_active_trade(state):
 
 def write_bot_active_trade_dir(direction):
     try:
-        if IS_ANALYSIS_MODE:
-            return
+        # Always persist the active trade direction to avoid stale on-disk state
         with open(BASE_PATH + "bot_active_trade_dir.txt", "w") as f:
             f.write(str(direction))
+        logger.info(f"Persisted bot_active_trade_dir: {direction}")
     except Exception as e:
         logger.error(f"Error writing trade direction: {e}")
 
@@ -555,17 +556,21 @@ Bot in standby mode
             if crash_state == "CRASH_DOWN" and active_trade_direction == "BUY":
                 logger.warning(f"🪂 PARACHUTE EXIT BUY: Flash Crash Down!")
                 signal = "CLOSE_BUY"
+                logger.info(f"Decision: set {signal} (crash_state={crash_state}, active={active_trade_direction}, price={price}, atr={atr})")
             elif crash_state == "CRASH_UP" and active_trade_direction == "SELL":
                 logger.warning(f"🪂 PARACHUTE EXIT SELL: Flash Spike Up!")
                 signal = "CLOSE_SELL"
+                logger.info(f"Decision: set {signal} (crash_state={crash_state}, active={active_trade_direction}, price={price}, atr={atr})")
 
             # 2. Reversal Exit (ออกตามเทรนด์ EMA50 ตัดสวน)
             elif trend_state == "STEEP_DOWN" and active_trade_direction == "BUY":
                 logger.warning(f"⚠️ EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_BUY"
+                logger.info(f"Decision: set {signal} (trend_state={trend_state}, slope={slope:.2f}, active={active_trade_direction})")
             elif trend_state == "STEEP_UP" and active_trade_direction == "SELL":
                 logger.warning(f"⚠️ EMERGENCY EXIT SELL: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_SELL"
+                logger.info(f"Decision: set {signal} (trend_state={trend_state}, slope={slope:.2f}, active={active_trade_direction})")
 
             if signal in ["CLOSE_BUY", "CLOSE_SELL"]:
                 cause = "โดนทุบแรงกะทันหันกระชากหนี SL" if crash_state != "SAFE" else f"เทรนด์เปลี่ยนทิศรุนแรง (Slope {slope:.2f})"
@@ -597,6 +602,8 @@ Bot in standby mode
 
                 signal = "CLOSE_BUY"
 
+                logger.info(f"Decision: set CLOSE_BUY (sweep={sweep}, momentum_down={momentum_down}, active={active_trade_direction})")
+
                 send_line(f"""⚠️ LIQUIDITY EXIT
 
 BUY Closed
@@ -621,6 +628,7 @@ Buy Liquidity Sweep Detected
 
 ⏰ {thai_time.strftime("%H:%M")}
 """)
+                logger.info(f"Decision: set CLOSE_SELL (sweep={sweep}, momentum_up={momentum_up}, active={active_trade_direction})")
 
 
         # =========================
@@ -753,7 +761,18 @@ Buy Liquidity Sweep Detected
 
         elif signal != "NONE":
              # Handle non-trade signals (CLOSE_BUY, CLOSE_SELL)
-             if not IS_ANALYSIS_MODE:
+             # Guard: ensure we only send CLOSE for the currently active trade direction.
+             if signal in ["CLOSE_BUY", "CLOSE_SELL"]:
+                 if active_trade_direction is None or active_trade_direction == "NONE":
+                     logger.warning(f"Skipping {signal}: active_trade_direction unknown ({active_trade_direction})")
+                     signal = "NONE"
+                 else:
+                     expected = f"CLOSE_{active_trade_direction}"
+                     if signal != expected:
+                         logger.warning(f"Signal {signal} mismatches active direction {active_trade_direction}; overriding to {expected}")
+                         signal = expected
+
+             if signal != "NONE" and not IS_ANALYSIS_MODE:
                  write_signal(signal, None, None)
 
         # =========================

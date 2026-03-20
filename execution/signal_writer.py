@@ -1,5 +1,9 @@
 import os
+import logging
 from config import PATH_SIGNAL
+
+logger = logging.getLogger(__name__)
+
 
 def write_signal(signal, sl=None, tp=None, lot=None):
 
@@ -7,16 +11,21 @@ def write_signal(signal, sl=None, tp=None, lot=None):
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
-   # ถ้าไม่มี signal
+    # Prepare content
     if signal == "NONE":
         content = "NONE"
-
     else:
-        # ส่ง signal พร้อม SL, TP และ Lot
         if lot is not None:
             content = f"{signal},{sl},{tp},{lot}"
         else:
             content = f"{signal},{sl},{tp}"
 
-    with open(path, "w", encoding="ascii") as f:
-        f.write(content)
+    try:
+        # Write using platform ANSI on Windows to match EA's FILE_ANSI expectation.
+        # On Windows 'mbcs' maps to the ANSI code page; on other OSes fall back to utf-8.
+        enc = 'mbcs' if os.name == 'nt' else 'utf-8'
+        with open(path, "w", encoding=enc) as f:
+            f.write(content)
+        logger.info(f"Wrote signal to {path}: {content}")
+    except Exception as e:
+        logger.error(f"Failed to write signal to {path}: {e}")
