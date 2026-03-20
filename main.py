@@ -142,6 +142,7 @@ last_weekday = datetime.now(timezone.utc).weekday()
 account_balance = 0
 current_positions = 0
 daily_pnl = 0
+daily_loss_alert_sent = False
 
 # Check if trade file is from a previous day (for startup reset)
 try:
@@ -265,8 +266,7 @@ Bot in standby mode
         # =========================
 
         account_balance = read_balance(account_balance)
-        daily_loss_limit = min(account_balance * DAILY_RISK_PERCENT, 50)
-
+        daily_loss_limit = account_balance * DAILY_RISK_PERCENT
         current_positions = read_positions(current_positions)
         daily_pnl = read_pnl(daily_pnl)
 
@@ -309,19 +309,29 @@ Bot in standby mode
         # DAILY LOSS LIMIT
         # =========================
 
-        #if daily_pnl <= -daily_loss_limit:
+        if daily_pnl <= -daily_loss_limit:
 
-           # send_line(f"""
-#🛑 RISK CONTROL
+            if not daily_loss_alert_sent:
+                logger.warning(f"CRITICAL: Daily Loss Limit Reached ({daily_pnl} / {-daily_loss_limit})")
+                send_line(f"🛑 RISK CONTROL: STOP TRADING\n\n⚠️ Daily Loss Limit Reached!\n\n📉 Current PnL : {round(daily_pnl, 2)}$\n🚫 Limit       : {round(-daily_loss_limit, 2)}$\n\nบอทหยุดเทรดอัตโนมัติเพื่อเซฟพอร์ตครับ\nจะเริ่มใหม่พรุ่งนี้เข้านะครับ\n\n⏰ {thai_time.strftime('%H:%M')}")
+                daily_loss_alert_sent = True
+            
+            time.sleep(60)
+            continue
+        else:
+            if daily_loss_alert_sent and daily_pnl > -daily_loss_limit:
+                daily_loss_alert_sent = False
 
-#⚠️ Daily Loss Limit Reached
 
-#📉 Current PnL : {daily_pnl}
-#🚫 Limit       : {-daily_loss_limit}
 
-#Bot Trading Paused
-#⏰ {thai_time.strftime("%H:%M")}
-#""")
+
+
+
+
+
+
+
+
 
             #print("Daily loss limit reached:", daily_pnl)
 
@@ -626,11 +636,12 @@ Buy Liquidity Sweep Detected
         # SL / TP
         # =========================
 
+        # RESET AI DATA FOR THIS LOOP
+        ai_confidence = 0
         sl = None
         tp = None
 
         if signal in ["BUY", "SELL"]:
-
             sl, tp = calculate_sl_tp(df, signal, price)
 
             if sl is None or tp is None:
