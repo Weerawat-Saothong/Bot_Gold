@@ -19,6 +19,7 @@ def create_features(df):
         df["volume"] = 1
 
     # EMA
+    df["ema9"] = df["close"].ewm(span=9).mean()
     df["ema20"] = df["close"].ewm(span=20).mean()
     df["ema50"] = df["close"].ewm(span=50).mean()
     df["ema200"] = df["close"].ewm(span=200).mean()
@@ -217,6 +218,29 @@ def is_overextended(price, ema, atr, direction):
             return True
             
     return False
+
+def check_flash_crash(df):
+    """
+    ตรวจสอบการกระชากของราคาอย่างรุนแรง (Flash Crash / Spike)
+    ช่วยให้ออกออเดอร์หนีก่อนที่จะโดนลากไปชน SL
+    """
+    last = df.iloc[-1]
+    atr = last["atr"]
+    
+    # วัดระยะจากจุดสูงสุด/ต่ำสุดของ 5 แท่งล่าสุด
+    recent_high = df["high"].iloc[-6:-1].max()
+    recent_low = df["low"].iloc[-6:-1].min()
+    
+    # ถ้าราคารูดลงมาจาก High ล่าสุดแรงมาก (เกิน 1.5 ATR) และหลุดเส้น EMA9
+    if (recent_high - last["close"]) > (atr * 1.5) and last["close"] < last["ema9"]:
+        return "CRASH_DOWN"
+        
+    # ถ้าราคาพุ่งขึ้นจาก Low ล่าสุดแรงมาก
+    if (last["close"] - recent_low) > (atr * 1.5) and last["close"] > last["ema9"]:
+        return "CRASH_UP"
+        
+    return "SAFE"
+
 
 def check_trend_safety(df):
     """

@@ -540,28 +540,38 @@ Bot in standby mode
             # อย่างไรก็ตาม ในโครงสร้างไฟล์ปัจจุบัน MT5 จะเป็นคนจัดการ Trailing อีกทีหากเราส่งค่าใหม่ไป
 
         # =========================
-        # ENERGENCY TREND EXIT (NEW)
+        # EMERGENCY TREND & CRASH EXIT 
         # =========================
         if current_positions > 0:
-            from strategy.signal_engine import check_trend_safety
+            from strategy.signal_engine import check_trend_safety, check_flash_crash
             trend_state, slope = check_trend_safety(df)
+            crash_state = check_flash_crash(df)
+            
             price = last["close"]
             ema = last["ema50"]
             atr = last["atr"]
 
-            # Exit BUY only if trend is steep down (Reversal)
-            if trend_state == "STEEP_DOWN" and active_trade_direction == "BUY":
+            # 1. Flash Crash Parachute (ออกเร็วสุดก่อนโดน SL)
+            if crash_state == "CRASH_DOWN" and active_trade_direction == "BUY":
+                logger.warning(f"🪂 PARACHUTE EXIT BUY: Flash Crash Down!")
+                signal = "CLOSE_BUY"
+            elif crash_state == "CRASH_UP" and active_trade_direction == "SELL":
+                logger.warning(f"🪂 PARACHUTE EXIT SELL: Flash Spike Up!")
+                signal = "CLOSE_SELL"
+
+            # 2. Reversal Exit (ออกตามเทรนด์ EMA50 ตัดสวน)
+            elif trend_state == "STEEP_DOWN" and active_trade_direction == "BUY":
                 logger.warning(f"⚠️ EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_BUY"
-            # Exit SELL only if trend is steep up (Reversal)
             elif trend_state == "STEEP_UP" and active_trade_direction == "SELL":
                 logger.warning(f"⚠️ EMERGENCY EXIT SELL: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_SELL"
 
             if signal in ["CLOSE_BUY", "CLOSE_SELL"]:
-                send_line(f"⚠️ EMERGENCY EXIT\n\nบอทสั่งปิดออเดอร์ทันทีเพราะเทรนด์เปลี่ยนทิศทางรุนแรงครับ\n\n💰 Type: {signal}\n📉 Slope: {slope:.2f}\n⏰ {thai_time.strftime('%H:%M')}")
+                cause = "โดนทุบแรงกะทันหันกระชากหนี SL" if crash_state != "SAFE" else f"เทรนด์เปลี่ยนทิศรุนแรง (Slope {slope:.2f})"
+                send_line(f"🪂 ทิ้งร่มชูชีพ (EMERGENCY EXIT)\n\nบอทสั่งปิดออเดอร์เพื่อรักษาเงินทุนก่อนชน SL ครับ\n\n📌 สาเหตุ: {cause}\n💰 Type: {signal}\n⏰ {thai_time.strftime('%H:%M')}")
                 # Skip normal signal engine until next loop
-                pass 
+                pass
 
         # =========================
         # SMART EXIT (LIQUIDITY REVERSAL)
@@ -710,10 +720,14 @@ Buy Liquidity Sweep Detected
         # =========================
 
         if signal in ["BUY", "SELL"]:
+            # Always update in-memory active trade direction so emergency/exit
+            # logic uses the most recent decision even when running in
+            # analysis mode (where file writes may be skipped).
+            active_trade_direction = signal
+
             if not IS_ANALYSIS_MODE:
                 write_bot_active_trade("1")
                 write_bot_active_trade_dir(signal)
-                active_trade_direction = signal
 
                 # ⚖️ DYNAMIC LOT CALCULATION (คำนวณตามความเสี่ยงจริง)
                 # สูตร: Lot = Risk_USD / (SL_Distance * ContractSize)
