@@ -691,29 +691,32 @@ Buy Liquidity Sweep Detected
             if not IS_ANALYSIS_MODE:
                 write_bot_active_trade("1")
 
-        if not IS_ANALYSIS_MODE:
-            # ⚖️ DYNAMIC LOT CALCULATION (คำนวณตามความเสี่ยงจริง)
-            # สูตร: Lot = Risk_USD / (SL_Distance * ContractSize)
-            risk_amount = RISK_PER_TRADE_USD
-            
-            # ถ้า AI มั่นใจสูงมาก ให้เพิ่มความเสี่ยง 2 เท่า ($20)
-            if ai_confidence >= 90:
-                risk_amount = RISK_PER_TRADE_USD * 2
-                logger.info(f"🔥 HIGH CONFIDENCE: Doubling risk to ${risk_amount}")
-            
-            # คำนวณ Lot (ทองคำ 1 lot = 100 oz)
-            # ปรับแต่งให้รองรับระยะ SL ขั้นต่ำเพื่อป้องกัน Lot บวมเกินไป
-            calculated_lot = risk_amount / (max(sl_distance, 0.5) * 100)
-            
-            # ปรับเป็นเลข 2 ตำแหน่ง (MT5 Standard) และคุมไม่ให้เกิน Limit
-            trade_lot = round(max(0.01, min(calculated_lot, 1.0)), 2)
-            
-            logger.info(f"⚖️ Dynamic Lot: Risk ${risk_amount} | SL Dist {round(sl_distance,2)} | Final Lot: {trade_lot}")
-            
-            write_signal(signal, sl, tp, trade_lot)
-        else:
-            if signal != "NONE":
+                # ⚖️ DYNAMIC LOT CALCULATION (คำนวณตามความเสี่ยงจริง)
+                # สูตร: Lot = Risk_USD / (SL_Distance * ContractSize)
+                risk_amount = RISK_PER_TRADE_USD
+                
+                # ถ้า AI มั่นใจสูงมาก ให้เพิ่มความเสี่ยง 2 เท่า ($20)
+                if ai_confidence >= 90:
+                    risk_amount = RISK_PER_TRADE_USD * 2
+                    logger.info(f"🔥 HIGH CONFIDENCE: Doubling risk to ${risk_amount}")
+                
+                # คำนวณ Lot (ทองคำ 1 lot = 100 oz)
+                # ปรับแต่งให้รองรับระยะ SL ขั้นต่ำเพื่อป้องกัน Lot บวมเกินไป
+                calculated_lot = risk_amount / (max(sl_distance, 0.5) * 100)
+                
+                # ปรับเป็นเลข 2 ตำแหน่ง (MT5 Standard) และคุมไม่ให้เกิน Limit
+                trade_lot = round(max(0.01, min(calculated_lot, 1.0)), 2)
+                
+                logger.info(f"⚖️ Dynamic Lot: Risk ${risk_amount} | SL Dist {round(sl_distance,2)} | Final Lot: {trade_lot}")
+                
+                write_signal(signal, sl, tp, trade_lot)
+            else:
                 logger.info(f"ANALYSIS MODE: Signal '{signal}' identified but NOT written to file.")
+
+        elif signal != "NONE":
+             # Handle non-trade signals (CLOSE_BUY, CLOSE_SELL)
+             if not IS_ANALYSIS_MODE:
+                 write_signal(signal, None, None)
 
         # =========================
         # LOSS DETECTION
