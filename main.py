@@ -527,12 +527,12 @@ Bot in standby mode
             ema = last["ema50"]
             atr = last["atr"]
 
-            # Exit BUY if trend is steep down or price is far below EMA
-            if trend_state == "STEEP_DOWN" or price < ema - (atr * 0.2):
+            # Exit BUY only if trend is steep down (Reversal)
+            if trend_state == "STEEP_DOWN":
                 logger.warning(f"⚠️ EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_BUY"
-            # Exit SELL if trend is steep up or price is far above EMA
-            elif trend_state == "STEEP_UP" or price > ema + (atr * 0.2):
+            # Exit SELL only if trend is steep up (Reversal)
+            elif trend_state == "STEEP_UP":
                 logger.warning(f"⚠️ EMERGENCY EXIT SELL: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_SELL"
 
