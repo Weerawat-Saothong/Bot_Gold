@@ -194,9 +194,31 @@ def is_overextended(price, ema, atr, direction):
             
     return False
 
-# ------------------------
-# MAIN SIGNAL ENGINE
-# ------------------------
+def check_trend_safety(df):
+    """
+    ตรวจสอบความชันของ EMA50 เพื่อดูว่าเทรนด์แรงเกินไปจนไม่ควรสวนหรือไม่
+    """
+    if not STRICT_TREND_FILTER:
+        return "CLEAR", 0.0
+
+    last = df.iloc[-1]
+    prev_5 = df.iloc[-6] # ดูความชันย้อนหลัง 5 แท่ง
+    
+    ema_now = last["ema50"]
+    ema_prev = prev_5["ema50"]
+    atr = last["atr"]
+    
+    if atr == 0: return "CLEAR", 0.0
+    
+    # คำนวณความชันเทียบกับ ATR (Normalize Slope)
+    slope = (ema_now - ema_prev) / atr
+    
+    if slope > MAX_EMA_SLOPE:
+        return "STEEP_UP", slope
+    if slope < -MAX_EMA_SLOPE:
+        return "STEEP_DOWN", slope
+        
+    return "STABLE", slope
 
 def get_signal(df, df_htf):
     if len(df) < 50 or len(df_htf) < 50:
@@ -225,6 +247,9 @@ def get_signal(df, df_htf):
     momentum_up = last["high"] > prev["high"]
     momentum_down = last["low"] < prev["low"]
 
+    # TREND SAFETY CHECK (Strict Trend Filter)
+    trend_state, slope = check_trend_safety(df)
+
     # PRE-TRADE FILTERS
     if not session_filter():
         return "NONE", "Weekend/Closed session"
@@ -247,8 +272,12 @@ def get_signal(df, df_htf):
     # BLACK SWAN (High Priority)
     swan = get_black_swan_signal(df)
     if swan != "NONE":
-        if swan == "BUY_SWAN": return "BUY", "Black Swan Momentum Buy"
-        if swan == "SELL_SWAN": return "SELL", "Black Swan Momentum Sell"
+        if swan == "BUY_SWAN":
+            if trend_state == "STEEP_DOWN": return "NONE", f"Blocked: Steep Down Trend (Slope: {slope:.2f})"
+            return "BUY", "Black Swan Momentum Buy"
+        if swan == "SELL_SWAN":
+            if trend_state == "STEEP_UP": return "NONE", f"Blocked: Steep Up Trend (Slope: {slope:.2f})"
+            return "SELL", "Black Swan Momentum Sell"
 
     # SIGNAL GENERATION
     # 1. LIQUIDITY SWEEP
@@ -261,23 +290,37 @@ def get_signal(df, df_htf):
     if trend_up and (htf_up or ltf_mode == "RANGE"):
         pb_ok, pb_msg = check_pullback(df, "UP")
         if pb_ok and momentum_up and rsi < 75:
+            # Check for Overextended or Steep Down
+            if trend_state == "STEEP_DOWN": return "NONE", f"Blocked: Steep Down Trend (Slope: {slope:.2f})"
+            if is_overextended(price, last["ema50"], atr, "BUY"): return "NONE", "Blocked: Price Overextended (Buy at top)"
             return "BUY", pb_msg
             
         if structure == "HL" and RSI_BUY_MIN <= rsi <= RSI_BUY_MAX and momentum_up:
+            if trend_state == "STEEP_DOWN": return "NONE", f"Blocked: Steep Down Trend (Slope: {slope:.2f})"
+            if is_overextended(price, last["ema50"], atr, "BUY"): return "NONE", "Blocked: Price Overextended (Buy at top)"
             return "BUY", "Trend HL Buy"
 
         if breakout == "BREAKOUT_BUY" and rsi <= RSI_BUY_MAX and momentum_up:
+            if trend_state == "STEEP_DOWN": return "NONE", f"Blocked: Steep Down Trend (Slope: {slope:.2f})"
+            if is_overextended(price, last["ema50"], atr, "BUY"): return "NONE", "Blocked: Price Overextended (Buy at top)"
             return "BUY", "Breakout Buy"
 
     if trend_down and (htf_down or ltf_mode == "RANGE"):
         pb_ok, pb_msg = check_pullback(df, "DOWN")
         if pb_ok and momentum_down and rsi > RSI_SELL_MIN:
+            # Check for Overextended or Steep Up
+            if trend_state == "STEEP_UP": return "NONE", f"Blocked: Steep Up Trend (Slope: {slope:.2f})"
+            if is_overextended(price, last["ema50"], atr, "SELL"): return "NONE", "Blocked: Price Overextended (Sell at bottom)"
             return "SELL", pb_msg
 
         if structure == "LH" and RSI_SELL_MIN <= rsi <= RSI_SELL_MAX and momentum_down:
+            if trend_state == "STEEP_UP": return "NONE", f"Blocked: Steep Up Trend (Slope: {slope:.2f})"
+            if is_overextended(price, last["ema50"], atr, "SELL"): return "NONE", "Blocked: Price Overextended (Sell at bottom)"
             return "SELL", "Trend LH Sell"
 
         if breakout == "BREAKOUT_SELL" and rsi >= RSI_SELL_MIN and momentum_down:
+            if trend_state == "STEEP_UP": return "NONE", f"Blocked: Steep Up Trend (Slope: {slope:.2f})"
+            if is_overextended(price, last["ema50"], atr, "SELL"): return "NONE", "Blocked: Price Overextended (Sell at bottom)"
             return "SELL", "Breakout Sell"
 
     return "NONE", "No trade patterns identified"

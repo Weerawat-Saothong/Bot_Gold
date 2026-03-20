@@ -37,7 +37,7 @@ trades = 0
 rejection_reasons = {}
 
 # Optimization: Run only on last 10,000 candles for quick feedback
-TEST_COUNT = 10000
+TEST_COUNT = 20000
 start_idx = len(df) - TEST_COUNT
 if start_idx < 100: start_idx = 100
 
@@ -96,8 +96,11 @@ for i in range(start_idx, len(df)):
         ai_signal, reason = get_signal(window, window_htf)
         
         if ai_signal == "NONE":
-            rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
-            
+            summary_reason = reason
+            if reason.startswith("Blocked:"):
+                summary_reason = reason.split("(")[0].strip() if "(" in reason else reason
+            rejection_reasons[summary_reason] = rejection_reasons.get(summary_reason, 0) + 1
+            continue
         if ai_signal in ["BUY_SWAN", "SELL_SWAN"]:
             ai_signal = "BUY" if ai_signal == "BUY_SWAN" else "SELL"
             

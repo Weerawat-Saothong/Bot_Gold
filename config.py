@@ -45,9 +45,16 @@ HIGH_CONFIDENCE_LOT = 0.02      # ล๊อตเมื่อ AI มั่นใ
 USE_TRAILING_STOP = False
 USE_BREAKEVEN = False    
 
-TRAILING_START = 5.0    
-TRAILING_STEP = 1.0     
-BREAKEVEN_START = 3.0   
+TRAILING_START = 25.0    # แก้จาก 5.0 เป็น 25.0 ($25)
+TRAILING_STEP = 5.0      # แก้จาก 1.0 เป็น 5.0 ($5)
+BREAKEVEN_START = 15.0   # แก้จาก 3.0 เป็น 15.0 ($15)
+
+# =========================
+# SAFETY FILTERS
+# =========================
+STRICT_TREND_FILTER = True  # ห้ามสวนเทรนด์เมื่อ EMA ชันมากๆ
+MAX_EMA_SLOPE = 0.1         # แก้จาก 1.0 เป็น 0.1 (เข้มงวดขึ้น 10 เท่า)
+MAX_EMA_ATR_DISTANCE = 5.0   # ระยะห่าง EMA สูงสุด (ATR)
 
 # =========================
 # SIGNAL FILTERS (Balanced Mode)

@@ -504,6 +504,30 @@ Bot in standby mode
             # อย่างไรก็ตาม ในโครงสร้างไฟล์ปัจจุบัน MT5 จะเป็นคนจัดการ Trailing อีกทีหากเราส่งค่าใหม่ไป
 
         # =========================
+        # ENERGENCY TREND EXIT (NEW)
+        # =========================
+        if current_positions > 0:
+            from strategy.signal_engine import check_trend_safety
+            trend_state, slope = check_trend_safety(df)
+            price = last["close"]
+            ema = last["ema50"]
+            atr = last["atr"]
+
+            # Exit BUY if trend is steep down or price is far below EMA
+            if trend_state == "STEEP_DOWN" or price < ema - (atr * 0.2):
+                logger.warning(f"⚠️ EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
+                signal = "CLOSE_BUY"
+            # Exit SELL if trend is steep up or price is far above EMA
+            elif trend_state == "STEEP_UP" or price > ema + (atr * 0.2):
+                logger.warning(f"⚠️ EMERGENCY EXIT SELL: Trend Reversal! (Slope: {slope:.2f})")
+                signal = "CLOSE_SELL"
+
+            if signal in ["CLOSE_BUY", "CLOSE_SELL"]:
+                send_line(f"⚠️ EMERGENCY EXIT\n\nบอทสั่งปิดออเดอร์ทันทีเพราะเทรนด์เปลี่ยนทิศทางรุนแรงครับ\n\n💰 Type: {signal}\n📉 Slope: {slope:.2f}\n⏰ {thai_time.strftime('%H:%M')}")
+                # Skip normal signal engine until next loop
+                pass 
+
+        # =========================
         # SMART EXIT (LIQUIDITY REVERSAL)
         # =========================
 
