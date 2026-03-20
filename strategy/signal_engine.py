@@ -52,6 +52,12 @@ def session_filter():
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5: # Sat/Sun
         return False
+    
+    # 🚫 ROLLOVER PROTECT: ห้ามเปิดไม้ช่วง 04:00 - 06:00 (เวลาไทย) / 21:00 - 23:00 (UTC)
+    # เพราะ Spread ถ่างมากและสภาพคล่องต่ำ
+    if 21 <= now.hour <= 22:
+        return False
+        
     return True
 
 def range_filter(df):

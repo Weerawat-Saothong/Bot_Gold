@@ -72,7 +72,7 @@ def apply_risk_management(position, current_price):
         
         # 1. Breakeven
         if USE_BREAKEVEN and profit >= BREAKEVEN_START and sl < entry:
-            sl = entry + 0.1 
+            sl = entry + 1.0 # ล็อกกำไร 1.0 เหรียญ
             
         # 2. Trailing Stop
         if USE_TRAILING_STOP and profit >= TRAILING_START:
