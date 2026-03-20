@@ -309,7 +309,11 @@ Bot in standby mode
         # DAILY LOSS LIMIT
         # =========================
 
-        if daily_pnl <= -daily_loss_limit:
+        today_date = thai_time.date()
+        activation_date = datetime(2026, 3, 23, tzinfo=timezone.utc).date()
+        
+        if today_date >= activation_date and daily_pnl <= -daily_loss_limit:
+
 
             if not daily_loss_alert_sent:
                 logger.warning(f"CRITICAL: Daily Loss Limit Reached ({daily_pnl} / {-daily_loss_limit})")
