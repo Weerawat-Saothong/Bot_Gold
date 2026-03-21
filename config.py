@@ -119,12 +119,28 @@ NEWS_CURRENCY = "USD"
 NEWS_IMPACT = "high"
 
 # =========================
-# AI GATEKEEPER SETTINGS
+# AI GATEKEEPER SETTINGS (Free Maximizer)
 # =========================
 USE_AI_GATEKEEPER = True
 AI_CONFIDENCE_THRESHOLD = 70
-AI_MODEL_NAME = "gemini-2.0-flash"
-AI_API_KEY = os.getenv("AI_API_KEY", "YOUR_API_KEY_HERE")
+
+# 🔄 Fallback Order: Qwen (ฟรี) → Gemini (ฟรี) → 70% (เงียบ)
+AI_PRIMARY = "qwen"
+AI_SECONDARY = "gemini"
+
+# 🔴 Qwen Settings (ผ่าน OpenRouter - มีฟรีเครดิต)
+QWEN_MODEL = "qwen/qwen-plus"  # หรือ "qwen/qwen-turbo" (ถูกกว่า)
+QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
+QWEN_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
+
+# 🟣 Gemini Settings (ฟรี 100%)
+GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_API_KEY = os.getenv("AI_API_KEY", "")
+
+# ⚙️ Fallback Behavior
+FALLBACK_TO_SECONDARY = True      # ถ้า Qwen หมด → ไป Gemini
+FALLBACK_CONFIDENCE = 70          # ถ้าทั้งคู่หมด → ใช้ค่านี้
+SILENT_FALLBACK = True            # ไม่ log เมื่อใช้ fallback สุดท้าย
 
 # =========================
 # OVEREXTENDED FILTER (PREVENT PEAK/BOTTOM ENTRY)
