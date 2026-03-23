@@ -65,7 +65,7 @@ class BacktestAIAnalyzer:
         winrate = (wins / total_trades) * 100 if total_trades > 0 else 0
         
         print("\n" + "="*50)
-        print("🤖 AI BACKTEST PERFORMANCE REPORT")
+        print("[BOT] AI BACKTEST PERFORMANCE REPORT")
         print("="*50)
         print(f"Total Trades : {total_trades}")
         print(f"Win Rate     : {winrate:.2f}%")

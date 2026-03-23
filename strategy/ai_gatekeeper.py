@@ -15,9 +15,9 @@ class AIGatekeeper:
         self.gemini_key = GEMINI_API_KEY if GEMINI_API_KEY else None
         self.gemini_model = GEMINI_MODEL if GEMINI_MODEL else "gemini-2.0-flash"
         if not self.qwen_key:
-            logger.warning("⚠️ QWEN_API_KEY not set - Qwen will be skipped")
+            logger.warning("[WARN] QWEN_API_KEY not set - Qwen will be skipped")
         if not self.gemini_key:
-            logger.warning("⚠️ GEMINI_API_KEY not set - Gemini will be skipped")
+            logger.warning("[WARN] GEMINI_API_KEY not set - Gemini will be skipped")
         
     def validate_signal(self, market_state, signal_data) -> dict:
         if signal_data.get('direction') not in ["BUY", "SELL"]:
@@ -29,20 +29,20 @@ class AIGatekeeper:
             }
         if self.qwen_key:
             try:
-                logger.debug("🤖 Trying Qwen AI...")
+                logger.debug("[BOT] Trying Qwen AI...")
                 return self._call_qwen(market_state, signal_data)
             except QuotaExceededError:
-                logger.debug("⚠️ Qwen quota exceeded, trying Gemini...")
+                logger.debug("[WARN] Qwen quota exceeded, trying Gemini...")
             except Exception as e:
-                logger.debug(f"⚠️ Qwen error: {type(e).__name__}, trying Gemini...")
+                logger.debug(f"[WARN] Qwen error: {type(e).__name__}, trying Gemini...")
         if self.gemini_key and FALLBACK_TO_SECONDARY:
             try:
-                logger.debug("🤖 Trying Gemini AI...")
+                logger.debug("[BOT] Trying Gemini AI...")
                 return self._call_gemini(market_state, signal_data)
             except QuotaExceededError:
-                logger.debug("⚠️ Gemini quota exceeded, using fallback...")
+                logger.debug("[WARN] Gemini quota exceeded, using fallback...")
             except Exception as e:
-                logger.debug(f"⚠️ Gemini error: {type(e).__name__}, using fallback...")
+                logger.debug(f"[WARN] Gemini error: {type(e).__name__}, using fallback...")
         return self._fallback_silent()
     
     def _fallback_silent(self) -> dict:

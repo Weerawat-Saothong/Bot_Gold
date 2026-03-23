@@ -23,7 +23,7 @@ result = gatekeeper.validate_signal(
     }
 )
 
-print(f"✅ Decision: {result['decision']}")
-print(f"✅ Confidence: {result['confidence']}%")
-print(f"✅ Provider: {result['provider']}")
-print(f"📝 Reason: {result['reason']}")
+print(f"[OK] Decision: {result['decision']}")
+print(f"[OK] Confidence: {result['confidence']}%")
+print(f"[OK] Provider: {result['provider']}")
+print(f"[LOG] Reason: {result['reason']}")

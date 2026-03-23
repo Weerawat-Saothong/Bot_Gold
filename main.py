@@ -32,10 +32,10 @@ logger.info("Gold Quant Bot Started")
 thai_time = datetime.now(timezone.utc) + timedelta(hours=7)
 
 send_line(f"""
-🤖 GOLD QUANT BOT
+[BOT] GOLD QUANT BOT
 
-🟢 Status : ONLINE
-⏰ Time   : {thai_time.strftime("%H:%M")}
+[BUY] Status : ONLINE
+[TIME] Time   : {thai_time.strftime("%H:%M")}
 
 System Ready
 """)
@@ -188,7 +188,7 @@ rejection_reasons = {}
 last_analysis_time = datetime.now(timezone.utc)
 ANALYSIS_INTERVAL_HOURS = 2 
 
-# ⚠️ ระบบเตือนข้อมูลค้าง (Stale Data Alert)
+# [WARN] ระบบเตือนข้อมูลค้าง (Stale Data Alert)
 last_stale_alert_time = None
 is_stale = False
 STALE_THRESHOLD_MINUTES = 15  # เตือนถ้าค้างเกิน 15 นาที
@@ -255,23 +255,23 @@ Bot in standby mode
             logger.info(f"Daily Reset. Balance: {account_balance}, PnL: {daily_pnl}")
 
             send_line(f"""
-📊 GOLD QUANT DAILY REPORT
+[INFO] GOLD QUANT DAILY REPORT
 
 📅 Date : {now.strftime("%Y-%m-%d")}
-⏰ Time : {thai_time.strftime("%H:%M")}
+[TIME] Time : {thai_time.strftime("%H:%M")}
 
 ──────────────
 
 🔁 Trades  : {trades_today}
-💰 PnL     : {daily_pnl}$
+[TRADE] PnL     : {daily_pnl}$
 🏦 Balance : {account_balance}$
 
 ──────────────
 
 ⚙️ Max/Day : {MAX_TRADES_PER_DAY}
-🟢 Status  : Active
+[BUY] Status  : Active
 
-🤖 Gold Quant Bot
+[BOT] Gold Quant Bot
 """)
 
             trades_today = 0
@@ -311,7 +311,7 @@ Bot in standby mode
 
         System Locked
 
-        ⏰ {thai_time.strftime("%H:%M")}
+        [TIME] {thai_time.strftime("%H:%M")}
         """)
 
             write_signal("CLOSE", None, None)
@@ -340,7 +340,7 @@ Bot in standby mode
 
             if not daily_loss_alert_sent:
                 logger.warning(f"CRITICAL: Daily Loss Limit Reached ({daily_pnl} / {-daily_loss_limit})")
-                send_line(f"🛑 RISK CONTROL: STOP TRADING\n\n⚠️ Daily Loss Limit Reached!\n\n📉 Current PnL : {round(daily_pnl, 2)}$\n🚫 Limit       : {round(-daily_loss_limit, 2)}$\n\nบอทหยุดเทรดอัตโนมัติเพื่อเซฟพอร์ตครับ\nจะเริ่มใหม่พรุ่งนี้เข้านะครับ\n\n⏰ {thai_time.strftime('%H:%M')}")
+                send_line(f"🛑 RISK CONTROL: STOP TRADING\n\n[WARN] Daily Loss Limit Reached!\n\n[DOWN] Current PnL : {round(daily_pnl, 2)}$\n🚫 Limit       : {round(-daily_loss_limit, 2)}$\n\nบอทหยุดเทรดอัตโนมัติเพื่อเซฟพอร์ตครับ\nจะเริ่มใหม่พรุ่งนี้เข้านะครับ\n\n[TIME] {thai_time.strftime('%H:%M')}")
                 daily_loss_alert_sent = True
             
             time.sleep(60)
@@ -392,7 +392,7 @@ Bot in standby mode
         # =========================
 
         # =========================
-        # ⚠️ STALE DATA CHECK (MODIFIED)
+        # [WARN] STALE DATA CHECK (MODIFIED)
         # =========================
         try:
             mtime = os.path.getmtime(PATH_M5)
@@ -403,15 +403,15 @@ Bot in standby mode
                 now_utc = datetime.now(timezone.utc)
                 if last_stale_alert_time is None or (now_utc - last_stale_alert_time).total_seconds() >= STALE_COOLDOWN_MINUTES * 60:
                     
-                    logger.error(f"⚠️ DATA STALE: MT5 has not updated for {round(diff_min, 1)} minutes!")
-                    send_line(f"⚠️ GOLD BOT: DATA STALE\n\nข้อมูลจาก MT5 ไม่มีการอัพเดตมาเป็นเวลา {round(diff_min, 1)} นาทีแล้วครับ!\n\nกรุณาตรวจสอบ MT5 บน Server ด้วยนะครับ\n\n⏰ {thai_time.strftime('%H:%M')}")
+                    logger.error(f"[WARN] DATA STALE: MT5 has not updated for {round(diff_min, 1)} minutes!")
+                    send_line(f"[WARN] GOLD BOT: DATA STALE\n\nข้อมูลจาก MT5 ไม่มีการอัพเดตมาเป็นเวลา {round(diff_min, 1)} นาทีแล้วครับ!\n\nกรุณาตรวจสอบ MT5 บน Server ด้วยนะครับ\n\n[TIME] {thai_time.strftime('%H:%M')}")
                     last_stale_alert_time = now_utc
                     is_stale = True
             
             elif is_stale:
                 # Data recovered!
-                logger.info("✅ DATA RECOVERED: MT5 is updating again!")
-                send_line(f"✅ GOLD BOT: DATA RECOVERED\n\nข้อมูลจาก MT5 กลับมาอัพเดตปกติแล้วครับ\n\n⏰ {thai_time.strftime('%H:%M')}")
+                logger.info("[OK] DATA RECOVERED: MT5 is updating again!")
+                send_line(f"[OK] GOLD BOT: DATA RECOVERED\n\nข้อมูลจาก MT5 กลับมาอัพเดตปกติแล้วครับ\n\n[TIME] {thai_time.strftime('%H:%M')}")
                 is_stale = False
                 last_stale_alert_time = None
 
@@ -554,27 +554,27 @@ Bot in standby mode
 
             # 1. Flash Crash Parachute (ออกเร็วสุดก่อนโดน SL)
             if crash_state == "CRASH_DOWN" and active_trade_direction == "BUY":
-                logger.warning(f"🪂 PARACHUTE EXIT BUY: Flash Crash Down!")
+                logger.warning(f"[PARACHUTE] PARACHUTE EXIT BUY: Flash Crash Down!")
                 signal = "CLOSE_BUY"
                 logger.info(f"Decision: set {signal} (crash_state={crash_state}, active={active_trade_direction}, price={price}, atr={atr})")
             elif crash_state == "CRASH_UP" and active_trade_direction == "SELL":
-                logger.warning(f"🪂 PARACHUTE EXIT SELL: Flash Spike Up!")
+                logger.warning(f"[PARACHUTE] PARACHUTE EXIT SELL: Flash Spike Up!")
                 signal = "CLOSE_SELL"
                 logger.info(f"Decision: set {signal} (crash_state={crash_state}, active={active_trade_direction}, price={price}, atr={atr})")
 
             # 2. Reversal Exit (ออกตามเทรนด์ EMA50 ตัดสวน)
             elif trend_state == "STEEP_DOWN" and active_trade_direction == "BUY":
-                logger.warning(f"⚠️ EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
+                logger.warning(f"[WARN] EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_BUY"
                 logger.info(f"Decision: set {signal} (trend_state={trend_state}, slope={slope:.2f}, active={active_trade_direction})")
             elif trend_state == "STEEP_UP" and active_trade_direction == "SELL":
-                logger.warning(f"⚠️ EMERGENCY EXIT SELL: Trend Reversal! (Slope: {slope:.2f})")
+                logger.warning(f"[WARN] EMERGENCY EXIT SELL: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_SELL"
                 logger.info(f"Decision: set {signal} (trend_state={trend_state}, slope={slope:.2f}, active={active_trade_direction})")
 
             if signal in ["CLOSE_BUY", "CLOSE_SELL"]:
                 cause = "โดนทุบแรงกะทันหันกระชากหนี SL" if crash_state != "SAFE" else f"เทรนด์เปลี่ยนทิศรุนแรง (Slope {slope:.2f})"
-                send_line(f"🪂 ทิ้งร่มชูชีพ (EMERGENCY EXIT)\n\nบอทสั่งปิดออเดอร์เพื่อรักษาเงินทุนก่อนชน SL ครับ\n\n📌 สาเหตุ: {cause}\n💰 Type: {signal}\n⏰ {thai_time.strftime('%H:%M')}")
+                send_line(f"[PARACHUTE] ทิ้งร่มชูชีพ (EMERGENCY EXIT)\n\nบอทสั่งปิดออเดอร์เพื่อรักษาเงินทุนก่อนชน SL ครับ\n\n📌 สาเหตุ: {cause}\n[TRADE] Type: {signal}\n[TIME] {thai_time.strftime('%H:%M')}")
                 # Skip normal signal engine until next loop
                 pass
 
@@ -604,13 +604,13 @@ Bot in standby mode
 
                 logger.info(f"Decision: set CLOSE_BUY (sweep={sweep}, momentum_down={momentum_down}, active={active_trade_direction})")
 
-                send_line(f"""⚠️ LIQUIDITY EXIT
+                send_line(f"""[WARN] LIQUIDITY EXIT
 
 BUY Closed
 
 Sell Liquidity Sweep Detected
 
-⏰ {thai_time.strftime("%H:%M")}
+[TIME] {thai_time.strftime("%H:%M")}
 """)
 
             # EXIT SELL
@@ -620,13 +620,13 @@ Sell Liquidity Sweep Detected
 
                 signal = "CLOSE_SELL"
 
-                send_line(f"""⚠️ LIQUIDITY EXIT
+                send_line(f"""[WARN] LIQUIDITY EXIT
 
 SELL Closed
 
 Buy Liquidity Sweep Detected
 
-⏰ {thai_time.strftime("%H:%M")}
+[TIME] {thai_time.strftime("%H:%M")}
 """)
                 logger.info(f"Decision: set CLOSE_SELL (sweep={sweep}, momentum_up={momentum_up}, active={active_trade_direction})")
 
@@ -639,7 +639,7 @@ Buy Liquidity Sweep Detected
             if is_overextended(price, last['ema50'], last['atr'], signal):
                 logger.info(f"🚫 BLOCKING {signal}: Overextended (Price too far from EMA50)")
                 if not IS_ANALYSIS_MODE:
-                    send_line(f"🚫 {signal} CANCELLED\n\nบอทระงับสัญญาณ {signal} เพราะราคาอยู่ห่างจากเส้น EMA มากเกินไป (เสี่ยงปลายไส้)\n\n💰 Price: {round(price,2)}\n⏰ {thai_time.strftime('%H:%M')}")
+                    send_line(f"🚫 {signal} CANCELLED\n\nบอทระงับสัญญาณ {signal} เพราะราคาอยู่ห่างจากเส้น EMA มากเกินไป (เสี่ยงปลายไส้)\n\n[TRADE] Price: {round(price,2)}\n[TIME] {thai_time.strftime('%H:%M')}")
                 signal = "NONE"
 
         if signal in ["BUY", "SELL"] and USE_AI_GATEKEEPER:
@@ -696,19 +696,19 @@ Buy Liquidity Sweep Detected
             else:
 
                 send_line(f"""
-🚀 GOLD {"LAYER ADDED" if current_positions > 0 else "TRADE OPEN"}
+[ALERT] GOLD {"LAYER ADDED" if current_positions > 0 else "TRADE OPEN"}
 
-📊 Direction : {signal}
-💰 Entry     : {round(price,2)}
+[INFO] Direction : {signal}
+[TRADE] Entry     : {round(price,2)}
 🔍 Pattern   : {rejection_reason}
-📈 Layers    : {current_positions + 1}
+[UP] Layers    : {current_positions + 1}
 
 🛑 Stop Loss : {round(sl,2)}
 🎯 Take Profit : {round(tp,2)}
 
-⏰ Time : {thai_time.strftime("%H:%M")}
+[TIME] Time : {thai_time.strftime("%H:%M")}
 
-🤖 Gold Quant Bot
+[BOT] Gold Quant Bot
 """)
 
                 sl_distance = abs(price - sl)
@@ -801,7 +801,7 @@ Trades today: {trades_today}
 Today PnL: {daily_pnl}
 ----------------------------------""")
         else:
-            # ✅ ใหม่ (ชัดเจน):
+            # [OK] ใหม่ (ชัดเจน):
             if signal == "NONE":
                 if ai_signal == "NONE":
                     status_msg = "No Pattern"
@@ -815,7 +815,7 @@ Today PnL: {daily_pnl}
             logger.info(f"[{signal}] {status_msg} | Price: {price} | ATR: {round(last['atr'],2)} | RSI: {round(last['rsi'],1)} | Pos: {current_positions}")
             
         # =========================
-        # 🤖 PERIODIC AI ANALYSIS REPORT
+        # [BOT] PERIODIC AI ANALYSIS REPORT
         # =========================
         
         if (now - last_analysis_time).total_seconds() >= ANALYSIS_INTERVAL_HOURS * 3600:
@@ -827,10 +827,10 @@ Today PnL: {daily_pnl}
                 summary_text = "\n".join([f"• {reason}: {count} ครั้ง" for reason, count in sorted_reasons[:5]])
                 
                 send_line(f"""
-🤖 GOLD BOT: AI LOG ANALYSIS
+[BOT] GOLD BOT: AI LOG ANALYSIS
 (สรุปเหตุผลที่ไม่เข้าเทรดในช่วง {ANALYSIS_INTERVAL_HOURS} ชม. ที่ผ่านมา)
 
-📊 สาเหตุหลัก:
+[INFO] สาเหตุหลัก:
 {summary_text}
 
 💡 คำแนะนำ:
@@ -848,11 +848,11 @@ Today PnL: {daily_pnl}
         logger.exception(f"Unexpected error: {e}")
 
         send_line(f"""
-⚠️ GOLD BOT ERROR
+[WARN] GOLD BOT ERROR
 
 {e}
 
-⏰ Time : {thai_time.strftime("%H:%M")}
+[TIME] Time : {thai_time.strftime("%H:%M")}
 """)
 
     time.sleep(60)

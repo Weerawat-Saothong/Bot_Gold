@@ -126,7 +126,7 @@ print(f"Trades: {trades}")
 print(f"Wins: {wins} | Losses: {losses}")
 print(f"Winrate: {round(wins/(wins+losses)*100, 2) if (wins+losses)>0 else 0} %")
 
-print("\n📊 REJECTION REASONS ANALYSIS:")
+print("\n[INFO] REJECTION REASONS ANALYSIS:")
 sorted_reasons = sorted(rejection_reasons.items(), key=lambda x: x[1], reverse=True)
 for reason, count in sorted_reasons[:10]:
     print(f"• {reason}: {count}")

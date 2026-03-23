@@ -124,11 +124,11 @@ NEWS_IMPACT = "high"
 USE_AI_GATEKEEPER = True
 AI_CONFIDENCE_THRESHOLD = 70
 
-# 🔄 Fallback Order: Qwen (ฟรี) → Gemini (ฟรี) → 70% (เงียบ)
+# [UPDATE] Fallback Order: Qwen (ฟรี) → Gemini (ฟรี) → 70% (เงียบ)
 AI_PRIMARY = "qwen"
 AI_SECONDARY = "gemini"
 
-# 🔴 Qwen Settings (ผ่าน OpenRouter - มีฟรีเครดิต)
+# [SELL] Qwen Settings (ผ่าน OpenRouter - มีฟรีเครดิต)
 QWEN_MODEL = "qwen/qwen-plus"  # หรือ "qwen/qwen-turbo" (ถูกกว่า)
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 QWEN_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
