@@ -7,6 +7,13 @@ from config import *
 
 logger = logging.getLogger(__name__)
 
+def clean_text(text: str) -> str:
+    """ทำความสะอาดข้อความจาก AI - ลบตัวอักษรที่ Windows Console ไม่รองรับ"""
+    if not text:
+        return ""
+    return text.encode('ascii', errors='replace').decode('ascii')
+
+
 class AIGatekeeper:
     def __init__(self):
         self.qwen_key = QWEN_API_KEY if QWEN_API_KEY else None
@@ -131,10 +138,14 @@ class AIGatekeeper:
                 confidence = min(100, max(0, int(match.group(1))))
             if "reason" in line.lower() or "เพราะ" in line.lower():
                 reason = line.split(':', 1)[-1].strip() if ':' in line else line
+        
+        # ✅ ทำความสะอาด reason ก่อน return
+        reason = clean_text(reason)
+        
         return {
             "decision": decision,
             "confidence": confidence,
-            "reason": reason,
+            "reason": reason,  # ✅ สะอาดแล้ว!
             "provider": provider
         }
 

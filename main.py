@@ -660,6 +660,10 @@ Buy Liquidity Sweep Detected
             }
             
             ai_result = gatekeeper.validate_signal(market_state, signal_data)
+
+            # เพิ่มบรรทัดนี้ทันทีหลัง:
+            if ai_result and ai_result.get('reason'):
+                ai_result['reason'] = ai_result['reason'].encode('ascii', errors='replace').decode('ascii')
             ai_confidence = ai_result.get('confidence', 0) # เก็บค่าความมั่นใจไว้ใช้คำนวณ Lot
             
             if ai_result['decision'] == "REJECT" or ai_result['confidence'] < AI_CONFIDENCE_THRESHOLD:
