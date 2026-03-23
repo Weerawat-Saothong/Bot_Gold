@@ -78,11 +78,21 @@ class AIGatekeeper:
 === Question ===
 Should we enter this trade?
 
-=== Response Format ===
-Answer in exactly 3 lines:
-1. CONFIRM or REJECT
-2. Confidence: 0-100
-3. Reason: Short reason in ENGLISH ONLY (max 10 words)
+=== IMPORTANT ===
+ You MUST respond in ENGLISH ONLY
+ Use EXACTLY this format (3 lines):
+
+CONFIRM
+Confidence: 85
+Reason: RSI oversold with strong uptrend
+
+OR
+
+REJECT
+Confidence: 45
+Reason: RSI overbought, weak momentum
+
+=== Response ===
 """
     
     def _call_qwen(self, market_state, signal_data) -> dict:
@@ -126,26 +136,51 @@ Answer in exactly 3 lines:
             raise
     
     def _parse_response(self, text, provider) -> dict:
+        """แยกข้อความจาก AI เป็น structured data"""
+        
+        # ✅ ทำความสะอาดข้อความก่อน parse
+        text = clean_text(text)
+        
+        logger.debug(f"AI Raw Response: {text}")  # ✅ เพิ่มล็อกดู raw response
+        
         lines = [l.strip() for l in text.split('\n') if l.strip()]
         decision, confidence, reason = "REJECT", 50, ""
+        
         for line in lines:
-            if "CONFIRM" in line.upper():
+            line_upper = line.upper()
+            
+            # ✅ หา CONFIRM/REJECT
+            if "CONFIRM" in line_upper:
                 decision = "CONFIRM"
-            elif "REJECT" in line.upper():
+            elif "REJECT" in line_upper:
                 decision = "REJECT"
+            
+            # ✅ หา Confidence (รองรับหลายรูปแบบ)
             match = re.search(r'[Cc]onfidence[:\s]*(\d+)', line)
             if match:
                 confidence = min(100, max(0, int(match.group(1))))
-            if "reason" in line.lower() or "เพราะ" in line.lower():
-                reason = line.split(':', 1)[-1].strip() if ':' in line else line
+            
+            # ✅ หา Reason (รองรับหลายรูปแบบ)
+            if "reason" in line.lower():
+                # แยกหลังคำว่า "Reason:"
+                parts = line.split(':', 1)
+                if len(parts) > 1:
+                    reason = parts[1].strip()
+                else:
+                    reason = line
         
-        # ✅ ทำความสะอาด reason ก่อน return
-        reason = clean_text(reason)
+        # ✅ ถ้า reason ยังว่าง → ใช้ข้อความทั้งหมดที่ไม่ใช่ decision/confidence
+        if not reason:
+            reason = ' '.join([l for l in lines if 'confidence' not in l.lower() 
+                            and 'confirm' not in l.lower() 
+                            and 'reject' not in l.lower()])
+        
+        logger.debug(f"Parsed: decision={decision}, confidence={confidence}, reason={reason}")
         
         return {
             "decision": decision,
             "confidence": confidence,
-            "reason": reason,  # ✅ สะอาดแล้ว!
+            "reason": reason if reason else "No reason provided",  # ✅ ป้องกันว่าง
             "provider": provider
         }
 

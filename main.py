@@ -661,6 +661,7 @@ Buy Liquidity Sweep Detected
             
             ai_result = gatekeeper.validate_signal(market_state, signal_data)
 
+            logger.debug(f"AI Raw Result: {ai_result}")
             # เพิ่มบรรทัดนี้ทันทีหลัง:
             if ai_result and ai_result.get('reason'):
                 ai_result['reason'] = ai_result['reason'].encode('ascii', errors='replace').decode('ascii')
