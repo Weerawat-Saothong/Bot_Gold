@@ -801,9 +801,19 @@ Trades today: {trades_today}
 Today PnL: {daily_pnl}
 ----------------------------------""")
         else:
-            # Log ทุกรอบเพื่อให้เห็นว่าบอททำอะไรอยู่บน server
-            logger.info(f"[{signal}] AI: {ai_signal} ({rejection_reason if ai_signal == 'NONE' else 'OK'}) | Price: {price} | ATR: {round(last['atr'],2)} | RSI: {round(last['rsi'],1)} | Pos: {current_positions}")
+            # ✅ ใหม่ (ชัดเจน):
+            if signal == "NONE":
+                if ai_signal == "NONE":
+                    status_msg = "No Pattern"
+                else:
+                    # มีสัญญาณแต่ถูกปฏิเสธ → แสดงเหตุผล
+                    status_msg = f"{ai_signal} REJECTED: {rejection_reason}"
+            else:
+                # สัญญาณผ่าน → แสดงว่าเทรด
+                status_msg = f"{ai_signal} CONFIRMED"
 
+            logger.info(f"[{signal}] {status_msg} | Price: {price} | ATR: {round(last['atr'],2)} | RSI: {round(last['rsi'],1)} | Pos: {current_positions}")
+            
         # =========================
         # 🤖 PERIODIC AI ANALYSIS REPORT
         # =========================
