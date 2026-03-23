@@ -61,28 +61,28 @@ class AIGatekeeper:
         }
     
     def _build_prompt(self, market_state, signal_data) -> str:
-        return f"""คุณเป็นผู้เชี่ยวชาญการเทรดทองคำ (XAU/USD) โปรดวิเคราะห์สัญญาณต่อไปนี้:
+        return f"""You are a GOLD (XAU/USD) trading expert. Analyze this signal:
 
-=== ข้อมูลตลาด ===
-• ราคา: {market_state.get('price')}
-• แนวโน้มใหญ่ (HTF): {market_state.get('htf_trend')}
-• แนวโน้มเล็ก (LTF): {market_state.get('ltf_trend')}
+=== Market Data ===
+• Price: {market_state.get('price')}
+• HTF Trend: {market_state.get('htf_trend')}
+• LTF Trend: {market_state.get('ltf_trend')}
 • RSI: {market_state.get('rsi')}
 • ATR: {market_state.get('atr')}
-• โครงสร้าง: {market_state.get('structure')}
+• Structure: {market_state.get('structure')}
 
-=== สัญญาณ ===
-• ทิศทาง: {signal_data.get('direction')}
-• รูปแบบ: {signal_data.get('pattern')}
+=== Signal ===
+• Direction: {signal_data.get('direction')}
+• Pattern: {signal_data.get('pattern')}
 
-=== คำถาม ===
-ควรเข้าเทรดตามสัญญาณนี้หรือไม่?
+=== Question ===
+Should we enter this trade?
 
-=== รูปแบบคำตอบ ===
-ตอบแค่ 3 บรรทัด:
-1. CONFIRM หรือ REJECT
+=== Response Format ===
+Answer in exactly 3 lines:
+1. CONFIRM or REJECT
 2. Confidence: 0-100
-3. Reason: เหตุผลสั้นๆ 1 ประโยค
+3. Reason: Short reason in ENGLISH ONLY (max 10 words)
 """
     
     def _call_qwen(self, market_state, signal_data) -> dict:
