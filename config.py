@@ -39,6 +39,16 @@ COOLDOWN_SECONDS = 15   # ระยะเวลารอระหว่างไ
 BASE_LOT = 0.01                 # ล๊อตเริ่มต้นปกติ
 RISK_PER_TRADE_USD = 10.0        # ยอมเสียสูงสุด $10 ต่อไม้ (ปรับได้ตามพอร์ต)
 
+# [NOTIFICATION SETTINGS] 
+# LINE Notify is DEAD in 2026. Use LINE_MESSAGING (Paid/Limited) or TELEGRAM (Free/Unlimited)
+NOTIFY_LEVEL = "INFO"          # "INFO" (All), "TRADE" (Only trades), "ERROR" (Only errors)
+NOTIFY_PROVIDER = "TELEGRAM" # "LINE_MESSAGING", "TELEGRAM", "DISABLED"
+SKIP_NON_URGENT = False        # Set True to skip daily reports/online status to save LINE quota
+
+# Telegram Settings (Recommended for Unlimited Free Alerts)
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
 HIGH_CONFIDENCE_LOT = 0.02      # ล๊อตเมื่อ AI มั่นใจเกิน 90%
 
 # =========================
