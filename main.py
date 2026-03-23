@@ -302,10 +302,10 @@ Bot in standby mode
 
         if current_positions > 0 and bot_trade_flag != "1":
 
-            logger.warning("🚨 MANUAL TRADE DETECTED")
+            logger.warning(" MANUAL TRADE DETECTED")
 
             send_line(f"""
-        🚨 MANUAL TRADE DETECTED
+         MANUAL TRADE DETECTED
 
         Bot did NOT open this trade
 
@@ -333,14 +333,14 @@ Bot in standby mode
         # =========================
 
         today_date = thai_time.date()
-        activation_date = datetime(2026, 3, 23, tzinfo=timezone.utc).date()
+        activation_date = datetime(2026, 3, 30, tzinfo=timezone.utc).date()
         
         if today_date >= activation_date and daily_pnl <= -daily_loss_limit:
 
 
             if not daily_loss_alert_sent:
                 logger.warning(f"CRITICAL: Daily Loss Limit Reached ({daily_pnl} / {-daily_loss_limit})")
-                send_line(f"🛑 RISK CONTROL: STOP TRADING\n\n[WARN] Daily Loss Limit Reached!\n\n[DOWN] Current PnL : {round(daily_pnl, 2)}$\n🚫 Limit       : {round(-daily_loss_limit, 2)}$\n\nบอทหยุดเทรดอัตโนมัติเพื่อเซฟพอร์ตครับ\nจะเริ่มใหม่พรุ่งนี้เข้านะครับ\n\n[TIME] {thai_time.strftime('%H:%M')}")
+                send_line(f" RISK CONTROL: STOP TRADING\n\n[WARN] Daily Loss Limit Reached!\n\n[DOWN] Current PnL : {round(daily_pnl, 2)}$\n🚫 Limit       : {round(-daily_loss_limit, 2)}$\n\nบอทหยุดเทรดอัตโนมัติเพื่อเซฟพอร์ตครับ\nจะเริ่มใหม่พรุ่งนี้เข้านะครับ\n\n[TIME] {thai_time.strftime('%H:%M')}")
                 daily_loss_alert_sent = True
             
             time.sleep(60)
@@ -513,7 +513,7 @@ Bot in standby mode
             else:
                 signal = "BUY"
                 black_swan_trades_today += 1
-                send_line("🚨 BLACK SWAN MODE ACTIVATED: BUY 🚨\n\nChasing extreme momentum!")
+                send_line(" BLACK SWAN MODE ACTIVATED: BUY \n\nChasing extreme momentum!")
 
         if signal == "SELL_SWAN":
             if black_swan_trades_today >= 1:
@@ -522,7 +522,7 @@ Bot in standby mode
             else:
                 signal = "SELL"
                 black_swan_trades_today += 1
-                send_line("🚨 BLACK SWAN MODE ACTIVATED: SELL 🚨\n\nChasing extreme momentum waterfall!")
+                send_line(" BLACK SWAN MODE ACTIVATED: SELL \n\nChasing extreme momentum waterfall!")
 
         # =========================
         # REAL-TIME RISK MANAGEMENT (Trailing & Breakeven)
@@ -637,9 +637,9 @@ Buy Liquidity Sweep Detected
         if signal in ["BUY", "SELL"]:
             # 🛑 BREAK: CHECK OVEREXTENDED (ป้องกันดอย/เหว)
             if is_overextended(price, last['ema50'], last['atr'], signal):
-                logger.info(f"🚫 BLOCKING {signal}: Overextended (Price too far from EMA50)")
+                logger.info(f" BLOCKING {signal}: Overextended (Price too far from EMA50)")
                 if not IS_ANALYSIS_MODE:
-                    send_line(f"🚫 {signal} CANCELLED\n\nบอทระงับสัญญาณ {signal} เพราะราคาอยู่ห่างจากเส้น EMA มากเกินไป (เสี่ยงปลายไส้)\n\n[TRADE] Price: {round(price,2)}\n[TIME] {thai_time.strftime('%H:%M')}")
+                    send_line(f" {signal} CANCELLED\n\nบอทระงับสัญญาณ {signal} เพราะราคาอยู่ห่างจากเส้น EMA มากเกินไป (เสี่ยงปลายไส้)\n\n[TRADE] Price: {round(price,2)}\n[TIME] {thai_time.strftime('%H:%M')}")
                 signal = "NONE"
 
         if signal in ["BUY", "SELL"] and USE_AI_GATEKEEPER:
@@ -744,7 +744,7 @@ Buy Liquidity Sweep Detected
                 # ถ้า AI มั่นใจสูงมาก ให้เพิ่มความเสี่ยง 2 เท่า ($20)
                 if ai_confidence >= 90:
                     risk_amount = RISK_PER_TRADE_USD * 2
-                    logger.info(f"🔥 HIGH CONFIDENCE: Doubling risk to ${risk_amount}")
+                    logger.info(f" HIGH CONFIDENCE: Doubling risk to ${risk_amount}")
                 
                 # คำนวณ Lot (ทองคำ 1 lot = 100 oz)
                 # ปรับแต่งให้รองรับระยะ SL ขั้นต่ำเพื่อป้องกัน Lot บวมเกินไป
