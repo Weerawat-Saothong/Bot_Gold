@@ -16,13 +16,12 @@ def write_signal(signal, sl=None, tp=None, lot=None):
         content = "NONE"
     else:
         if lot is not None:
-            content = f"{signal},{sl},{tp},{lot}"
+            content = f"{signal},{sl},{tp},{lot}"  # ✅ มี 4 ค่า
         else:
             content = f"{signal},{sl},{tp}"
 
     try:
-        # Write using platform ANSI on Windows to match EA's FILE_ANSI expectation.
-        # On Windows 'mbcs' maps to the ANSI code page; on other OSes fall back to utf-8.
+        # Write using platform ANSI on Windows to match EA's FILE_ANSI expectation
         enc = 'mbcs' if os.name == 'nt' else 'utf-8'
         with open(path, "w", encoding=enc) as f:
             f.write(content)

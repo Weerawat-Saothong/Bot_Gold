@@ -36,7 +36,11 @@ COOLDOWN_SECONDS = 15   # ระยะเวลารอระหว่างไ
 # =========================
 # MONITORING & ALERTS
 # =========================
-BASE_LOT = 0.01                 # ล๊อตเริ่มต้นปกติ
+USE_DYNAMIC_LOT = True       # ← เพิ่มบรรทัดนี้
+MIN_LOT = 0.01               # ← เพิ่มบรรทัดนี้
+MAX_LOT = 0.08               # ← เพิ่มบรรทัดนี้
+BASE_LOT = 0.03              # ← เปลี่ยนจาก 0.01 เป็น 0.03
+           
 RISK_PER_TRADE_USD = 10.0        # ยอมเสียสูงสุด $10 ต่อไม้ (ปรับได้ตามพอร์ต)
 
 # [NOTIFICATION SETTINGS] 
@@ -132,7 +136,7 @@ NEWS_IMPACT = "high"
 # AI GATEKEEPER SETTINGS (Free Maximizer)
 # =========================
 USE_AI_GATEKEEPER = True
-AI_CONFIDENCE_THRESHOLD = 70
+AI_CONFIDENCE_THRESHOLD = 45
 
 # [UPDATE] Fallback Order: Qwen (ฟรี) → Gemini (ฟรี) → 70% (เงียบ)
 AI_PRIMARY = "qwen"

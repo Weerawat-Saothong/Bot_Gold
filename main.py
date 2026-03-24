@@ -23,7 +23,7 @@ from strategy.ai_gatekeeper import gatekeeper
 # LOGGING SETUP
 # =========================
 
-log_file = os.path.join(os.path.dirname(BASE_PATH), "bot.log") # Save log near MT5 files or as appropriate
+log_file = os.path.join(os.path.dirname(BASE_PATH), "bot.log")
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -112,7 +112,6 @@ def write_bot_active_trade(state):
 
 def write_bot_active_trade_dir(direction):
     try:
-        # Always persist the active trade direction to avoid stale on-disk state
         with open(BASE_PATH + "bot_active_trade_dir.txt", "w") as f:
             f.write(str(direction))
         logger.info(f"Persisted bot_active_trade_dir: {direction}")
@@ -125,15 +124,12 @@ def gold_market_open(thai_time):
     wd = thai_time.weekday()
     hour = thai_time.hour
 
-    # Saturday after 04:00
     if wd == 5 and hour >= 4:
         return False
 
-    # Sunday
     if wd == 6:
         return False
 
-    # Monday before 06:00
     if wd == 0 and hour < 6:
         return False
 
@@ -182,7 +178,6 @@ try:
             logger.info("Startup: Reseting yesterday's trades from file")
             with open(trade_file_path, "w") as f:
                 f.write("0")
-            # Also reset PnL file if it exists
             pnl_file_path = BASE_PATH + "pnl.txt"
             if os.path.exists(pnl_file_path):
                 with open(pnl_file_path, "w") as f:
@@ -198,8 +193,8 @@ ANALYSIS_INTERVAL_HOURS = 2
 # [WARN] ระบบเตือนข้อมูลค้าง (Stale Data Alert)
 last_stale_alert_time = None
 is_stale = False
-STALE_THRESHOLD_MINUTES = 15  # เตือนถ้าค้างเกิน 15 นาที
-STALE_COOLDOWN_MINUTES = 30   # เตือนซ้ำทุก 30 นาที
+STALE_THRESHOLD_MINUTES = 15
+STALE_COOLDOWN_MINUTES = 30
 
 
 
@@ -219,9 +214,7 @@ while True:
         # =========================
         if not gold_market_open(thai_time):
 
-            # แจ้งเฉพาะตอนเข้า weekend ครั้งแรก
             if last_weekday < 5:
-
                 send_line("""
 📴 [MARKET] CLOSED
 ──────────────────
@@ -244,15 +237,13 @@ Gold Market Closed (Weekend)
             news_active, news_title = is_news_active(currency=NEWS_CURRENCY, buffer_minutes=NEWS_WAIT_MINUTES)
             if news_active:
                 logger.info(f"News Filter Active: {news_title}. Trading Paused.")
-                # Optional: send line alert once when news starts
-                # For now just skip the loop
                 time.sleep(60)
                 continue
 
 
 
         candle_counter += 1
-        ai_confidence = 0 # Initialize confidence per iteration
+        ai_confidence = 0
 
         # =========================
         # RESET DAILY
@@ -365,22 +356,6 @@ Gold Market Closed (Weekend)
             if daily_loss_alert_sent and daily_pnl > -daily_loss_limit:
                 daily_loss_alert_sent = False
 
-
-
-
-
-
-
-
-
-
-
-
-            #print("Daily loss limit reached:", daily_pnl)
-
-            #time.sleep(60)
-            #continue
-
         # =========================
         # MAX TRADES
         # =========================
@@ -434,7 +409,6 @@ Gold Market Closed (Weekend)
                     is_stale = True
             
             elif is_stale:
-                # Data recovered!
                 logger.info("[OK] DATA RECOVERED: MT5 is updating again!")
                 send_line(f"""
 ✅ [OK] DATA RECOVERED
@@ -516,11 +490,8 @@ Gold Market Closed (Weekend)
                 if last_entry_price is None:
                     signal = ai_signal
                 else:
-                    # Scaling In / Layering
                     distance = abs(price - last_entry_price)
                     
-                    # If we are already in profit, we can be slightly more aggressive with layering
-                    # but we still need some distance to avoid "clumping" trades
                     logger.info(f"Position Layering Check: Distance {round(distance, 2)} (Min: {round(min_distance, 2)})")
 
                     if distance >= min_distance:
@@ -564,14 +535,7 @@ Gold Market Closed (Weekend)
         from risk.risk_engine import apply_risk_management
         
         if current_positions > 0:
-            # ดึงข้อมูลสัญญาณเดิมเพื่อนำมารองรับการเลื่อน SL
-            # ในระบบนี้เราจำลองจากสถานะปัจจุบัน
-            # หมายเหตุ: ระบบจะเลื่อน SL เฉพาะเมื่อเปิด USE_TRAILING_STOP หรือ USE_BREAKEVEN ใน config
-            
-            # ดึง SL เดิมจากระบบ (ถ้ามี) หรือใช้ค่าจำลอง
-            # ในที่นี้ตัวอย่างใช้การคำนวณใหม่จากราคาปัจจุบัน
-            pass # ส่วนนี้จะถูกจัดการผ่านการเช็คและส่ง Signal "UPDATE" ไปยัง MT5 หากจำเป็น
-            # อย่างไรก็ตาม ในโครงสร้างไฟล์ปัจจุบัน MT5 จะเป็นคนจัดการ Trailing อีกทีหากเราส่งค่าใหม่ไป
+            pass
 
         # =========================
         # EMERGENCY TREND & CRASH EXIT 
@@ -585,7 +549,6 @@ Gold Market Closed (Weekend)
             ema = last["ema50"]
             atr = last["atr"]
 
-            # 1. Flash Crash Parachute (ออกเร็วสุดก่อนโดน SL)
             if crash_state == "CRASH_DOWN" and active_trade_direction == "BUY":
                 logger.warning(f"[PARACHUTE] PARACHUTE EXIT BUY: Flash Crash Down!")
                 signal = "CLOSE_BUY"
@@ -595,7 +558,6 @@ Gold Market Closed (Weekend)
                 signal = "CLOSE_SELL"
                 logger.info(f"Decision: set {signal} (crash_state={crash_state}, active={active_trade_direction}, price={price}, atr={atr})")
 
-            # 2. Reversal Exit (ออกตามเทรนด์ EMA50 ตัดสวน)
             elif trend_state == "STEEP_DOWN" and active_trade_direction == "BUY":
                 logger.warning(f"[WARN] EMERGENCY EXIT BUY: Trend Reversal! (Slope: {slope:.2f})")
                 signal = "CLOSE_BUY"
@@ -617,7 +579,6 @@ Gold Market Closed (Weekend)
 ⏰ {thai_time.strftime('%H:%M')}
 ──────────────────
 """)
-                # Skip normal signal engine until next loop
                 pass
 
         # =========================
@@ -637,7 +598,6 @@ Gold Market Closed (Weekend)
             if last["low"] < recent_low and last["close"] > recent_low:
                 sweep = "BUY_SWEEP"
 
-            # EXIT BUY
             if sweep == "SELL_SWEEP" and momentum_down and active_trade_direction == "BUY":
 
                 logger.info("Liquidity Exit BUY")
@@ -656,7 +616,6 @@ BUY Position Closed
 ──────────────────
 """)
 
-            # EXIT SELL
             elif sweep == "BUY_SWEEP" and momentum_up and active_trade_direction == "SELL":
 
                 logger.info("Liquidity Exit SELL")
@@ -679,7 +638,6 @@ SELL Position Closed
         # AI GATEKEEPER VALIDATION (NEW)
         # =========================
         if signal in ["BUY", "SELL"]:
-            # 🛑 BREAK: CHECK OVEREXTENDED (ป้องกันดอย/เหว)
             if is_overextended(price, last['ema50'], last['atr'], signal):
                 logger.info(f" BLOCKING {signal}: Overextended (Price too far from EMA50)")
                 if not IS_ANALYSIS_MODE:
@@ -697,7 +655,6 @@ SELL Position Closed
 
         if signal in ["BUY", "SELL"] and USE_AI_GATEKEEPER:
             
-            # Prepare market state for AI
             market_state = {
                 "price": round(price, 2),
                 "htf_trend": "UP" if df_htf.iloc[-1]['ema50'] > df_htf.iloc[-1]['ema200'] else "DOWN",
@@ -709,25 +666,23 @@ SELL Position Closed
             
             signal_data = {
                 "direction": signal,
-                "pattern": rejection_reason # Rejection reason becomes pattern if signal found
+                "pattern": rejection_reason
             }
             
             ai_result = gatekeeper.validate_signal(market_state, signal_data)
 
             logger.debug(f"AI Raw Result: {ai_result}")
-            # เพิ่มบรรทัดนี้ทันทีหลัง:
             if ai_result and ai_result.get('reason'):
                 ai_result['reason'] = ai_result['reason'].encode('ascii', errors='replace').decode('ascii')
-            ai_confidence = ai_result.get('confidence', 0) # เก็บค่าความมั่นใจไว้ใช้คำนวณ Lot
+            ai_confidence = ai_result.get('confidence', 0)
             
             if ai_result['decision'] == "REJECT" or ai_result['confidence'] < AI_CONFIDENCE_THRESHOLD:
                 logger.info(f"AI Gatekeeper Rejected Signal. Reason: {ai_result['reason']} (Confidence: {ai_result['confidence']}%)")
                 
-                # แจ้งเตือนผ่าน LINE เฉพาะในโหมดวิเคราะห์ (ถ้าคุยกับ User ไว้ว่าไม่ให้รบกวน อาจจะข้ามไป แต่เป็นข้อมูลที่ดี)
                 if IS_ANALYSIS_MODE:
                     logger.info(f"AI GUARD: REJECTED {signal} | Reason: {ai_result['reason']}")
                 
-                signal = "NONE" # ยกเลิกการเข้าออเดอร์
+                signal = "NONE"
             else:
                 logger.info(f"AI Gatekeeper Confirmed Signal. Reason: {ai_result['reason']} (Confidence: {ai_result['confidence']}%)")
                 if IS_ANALYSIS_MODE:
@@ -738,8 +693,7 @@ SELL Position Closed
         # SL / TP
         # =========================
 
-        # RESET AI DATA FOR THIS LOOP
-        ai_confidence = 0
+        ai_confidence = 0  # ✅ รีเซ็ตเพื่อรับค่าใหม่จาก Gatekeeper
         sl = None
         tp = None
 
@@ -781,44 +735,42 @@ SELL Position Closed
                     last_trade_candle = candle_counter
 
         # =========================
-        # WRITE SIGNAL
+        # ✅ DYNAMIC LOT CALCULATION (แก้ไขแล้ว - ตามความมั่นใจของ AI)
         # =========================
 
         if signal in ["BUY", "SELL"]:
-            # Always update in-memory active trade direction so emergency/exit
-            # logic uses the most recent decision even when running in
-            # analysis mode (where file writes may be skipped).
+            # Always update in-memory active trade direction
             active_trade_direction = signal
 
             if not IS_ANALYSIS_MODE:
                 write_bot_active_trade("1")
                 write_bot_active_trade_dir(signal)
 
-                # ⚖️ DYNAMIC LOT CALCULATION (คำนวณตามความเสี่ยงจริง)
-                # สูตร: Lot = Risk_USD / (SL_Distance * ContractSize)
-                risk_amount = RISK_PER_TRADE_USD
-                
-                # ถ้า AI มั่นใจสูงมาก ให้เพิ่มความเสี่ยง 2 เท่า ($20)
-                if ai_confidence >= 90:
-                    risk_amount = RISK_PER_TRADE_USD * 2
-                    logger.info(f" HIGH CONFIDENCE: Doubling risk to ${risk_amount}")
-                
-                # คำนวณ Lot (ทองคำ 1 lot = 100 oz)
-                # ปรับแต่งให้รองรับระยะ SL ขั้นต่ำเพื่อป้องกัน Lot บวมเกินไป
-                calculated_lot = risk_amount / (max(sl_distance, 0.5) * 100)
-                
-                # ปรับเป็นเลข 2 ตำแหน่ง (MT5 Standard) และคุมไม่ให้เกิน Limit
-                trade_lot = round(max(0.01, min(calculated_lot, 1.0)), 2)
-                
-                logger.info(f"⚖️ Dynamic Lot: Risk ${risk_amount} | SL Dist {round(sl_distance,2)} | Final Lot: {trade_lot}")
+                # ⚖️ DYNAMIC LOT CALCULATION (คำนวณตามความมั่นใจของ AI)
+                # ✅ Confidence-based Lot Multiplier
+                if ai_confidence < 40:
+                    multiplier = 0.3
+                elif ai_confidence < 50:
+                    multiplier = 0.5
+                elif ai_confidence < 80:
+                    multiplier = 1.5
+                else:
+                    multiplier = 1.8
+
+                # คำนวณ Lot จาก Base Lot × Multiplier
+                base_lot = 0.03  # หรือใช้จาก config.BASE_LOT
+                calculated_lot = base_lot * multiplier
+
+                # จำกัดช่วง MIN-MAX
+                trade_lot = round(max(0.01, min(calculated_lot, 0.05)), 2)
+
+                logger.info(f"⚖️ Dynamic Lot: Confidence {ai_confidence}% | Multiplier {multiplier}x | Final Lot: {trade_lot}")
                 
                 write_signal(signal, sl, tp, trade_lot)
             else:
                 logger.info(f"ANALYSIS MODE: Signal '{signal}' identified but NOT written to file.")
 
         elif signal != "NONE":
-             # Handle non-trade signals (CLOSE_BUY, CLOSE_SELL)
-             # Guard: ensure we only send CLOSE for the currently active trade direction.
              if signal in ["CLOSE_BUY", "CLOSE_SELL"]:
                  if active_trade_direction is None or active_trade_direction == "NONE":
                      logger.warning(f"Skipping {signal}: active_trade_direction unknown ({active_trade_direction})")
@@ -858,15 +810,12 @@ Trades today: {trades_today}
 Today PnL: {daily_pnl}
 ----------------------------------""")
         else:
-            # [OK] ใหม่ (ชัดเจน):
             if signal == "NONE":
                 if ai_signal == "NONE":
                     status_msg = "No Pattern"
                 else:
-                    # มีสัญญาณแต่ถูกปฏิเสธ → แสดงเหตุผล
                     status_msg = f"{ai_signal} REJECTED: {rejection_reason}"
             else:
-                # สัญญาณผ่าน → แสดงว่าเทรด
                 status_msg = f"{ai_signal} CONFIRMED"
 
             logger.info(f"[{signal}] {status_msg} | Price: {price} | ATR: {round(last['atr'],2)} | RSI: {round(last['rsi'],1)} | Pos: {current_positions}")
@@ -879,7 +828,6 @@ Today PnL: {daily_pnl}
             
             if rejection_reasons:
                 
-                # Sort reasons by frequency
                 sorted_reasons = sorted(rejection_reasons.items(), key=lambda x: x[1], reverse=True)
                 summary_text = "\n".join([f"• {reason}: {count} ครั้ง" for reason, count in sorted_reasons[:5]])
                 
@@ -895,7 +843,6 @@ Today PnL: {daily_pnl}
 ──────────────────
 """)
                 
-                # Reset tracking
                 rejection_reasons = {}
                 last_analysis_time = now
                 logger.info("AI Analysis report sent to LINE")
