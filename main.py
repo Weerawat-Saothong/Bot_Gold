@@ -692,8 +692,7 @@ SELL Position Closed
         # =========================
         # SL / TP
         # =========================
-
-        ai_confidence = 0  # ✅ รีเซ็ตเพื่อรับค่าใหม่จาก Gatekeeper
+    
         sl = None
         tp = None
 
@@ -747,6 +746,7 @@ SELL Position Closed
                 write_bot_active_trade_dir(signal)
 
                 # ⚖️ DYNAMIC LOT CALCULATION (คำนวณตามความมั่นใจของ AI)
+                logger.info(f"DEBUG: ai_confidence = {ai_confidence}") 
                 # ✅ Confidence-based Lot Multiplier
                 if ai_confidence < 40:
                     multiplier = 0.3
@@ -764,7 +764,7 @@ SELL Position Closed
                 # จำกัดช่วง MIN-MAX
                 trade_lot = round(max(0.01, min(calculated_lot, 0.05)), 2)
 
-                logger.info(f"⚖️ Dynamic Lot: Confidence {ai_confidence}% | Multiplier {multiplier}x | Final Lot: {trade_lot}")
+                logger.info(f" Dynamic Lot: Confidence {ai_confidence}% | Multiplier {multiplier}x | Final Lot: {trade_lot}")
                 
                 write_signal(signal, sl, tp, trade_lot)
             else:
