@@ -32,7 +32,9 @@ class AIGatekeeper:
                 "decision": "CONFIRM", 
                 "confidence": 100, 
                 "reason": "Not a trade signal",
-                "provider": "skipped"
+                "provider": "skipped",
+                "suggested_sl": None,
+                "suggested_tp": None
             }
         if self.qwen_key:
             try:
@@ -57,11 +59,13 @@ class AIGatekeeper:
             "decision": "CONFIRM",
             "confidence": FALLBACK_CONFIDENCE,
             "reason": "Technical analysis only",
-            "provider": "fallback_silent"
+            "provider": "fallback_silent",
+            "suggested_sl": None,
+            "suggested_tp": None
         }
     
     def _build_prompt(self, market_state, signal_data) -> str:
-        return f"""You are a GOLD (XAU/USD) trading expert. Analyze this signal:
+        return f"""You are a GOLD (XAU/USD) trading expert. Analyze this signal and suggest optimal SL/TP levels:
 
 === Market Data ===
 • Price: {market_state.get('price')}
@@ -70,27 +74,42 @@ class AIGatekeeper:
 • RSI: {market_state.get('rsi')}
 • ATR: {market_state.get('atr')}
 • Structure: {market_state.get('structure')}
+• Swing Low: {market_state.get('swing_low')}
+• Swing High: {market_state.get('swing_high')}
+• EMA50: {market_state.get('ema50')}
 
 === Signal ===
 • Direction: {signal_data.get('direction')}
 • Pattern: {signal_data.get('pattern')}
 
 === Question ===
-Should we enter this trade?
+1. Should we enter this trade?
+2. If CONFIRM, suggest the best Stop Loss and Take Profit levels based on the market structure.
+
+=== RULES FOR SL/TP ===
+• For BUY: SL must be BELOW the price, TP must be ABOVE the price.
+• For SELL: SL must be ABOVE the price, TP must be BELOW the price.
+• SL should be placed near a confirmed swing level with some ATR buffer.
+• TP should aim for at least 1.5x the risk (distance from entry to SL).
+• Use round numbers where possible.
 
 === IMPORTANT ===
  You MUST respond in ENGLISH ONLY
- Use EXACTLY this format (3 lines):
+ Use EXACTLY this format (5 lines):
 
 CONFIRM
 Confidence: 85
 Reason: RSI oversold with strong uptrend
+SL: 3010.50
+TP: 3035.00
 
 OR
 
 REJECT
 Confidence: 45
 Reason: RSI overbought, weak momentum
+SL: 0
+TP: 0
 
 === Response ===
 """
@@ -105,7 +124,7 @@ Reason: RSI overbought, weak momentum
         payload = {
             "model": self.qwen_model,
             "messages": [
-                {"role": "system", "content": "คุณเป็นผู้ช่วยวิเคราะห์การเทรดทองคำ ตอบสั้นๆ ตรงประเด็น"},
+                {"role": "system", "content": "You are a gold trading analyst. Respond concisely with trade decisions and SL/TP levels."},
                 {"role": "user", "content": prompt}
             ],
             "max_tokens": 200
@@ -136,52 +155,75 @@ Reason: RSI overbought, weak momentum
             raise
     
     def _parse_response(self, text, provider) -> dict:
-        """แยกข้อความจาก AI เป็น structured data"""
+        """แยกข้อความจาก AI เป็น structured data (รวม SL/TP)"""
         
-        # ✅ ทำความสะอาดข้อความก่อน parse
+        # ทำความสะอาดข้อความก่อน parse
         text = clean_text(text)
         
-        logger.debug(f"AI Raw Response: {text}")  # ✅ เพิ่มล็อกดู raw response
+        logger.debug(f"AI Raw Response: {text}")
         
         lines = [l.strip() for l in text.split('\n') if l.strip()]
         decision, confidence, reason = "REJECT", 50, ""
+        suggested_sl = None
+        suggested_tp = None
         
         for line in lines:
             line_upper = line.upper()
             
-            # ✅ หา CONFIRM/REJECT
+            # หา CONFIRM/REJECT
             if "CONFIRM" in line_upper:
                 decision = "CONFIRM"
             elif "REJECT" in line_upper:
                 decision = "REJECT"
             
-            # ✅ หา Confidence (รองรับหลายรูปแบบ)
+            # หา Confidence (รองรับหลายรูปแบบ)
             match = re.search(r'[Cc]onfidence[:\s]*(\d+)', line)
             if match:
                 confidence = min(100, max(0, int(match.group(1))))
             
-            # ✅ หา Reason (รองรับหลายรูปแบบ)
+            # หา SL (รองรับหลายรูปแบบ: "SL: 3010.50", "Stop Loss: 3010.50")
+            sl_match = re.search(r'(?:SL|Stop\s*Loss)[:\s]*([\d]+\.?\d*)', line, re.IGNORECASE)
+            if sl_match:
+                val = float(sl_match.group(1))
+                if val > 0:  # ไม่เอา SL: 0
+                    suggested_sl = val
+            
+            # หา TP (รองรับหลายรูปแบบ: "TP: 3035.00", "Take Profit: 3035.00")
+            tp_match = re.search(r'(?:TP|Take\s*Profit)[:\s]*([\d]+\.?\d*)', line, re.IGNORECASE)
+            if tp_match:
+                val = float(tp_match.group(1))
+                if val > 0:  # ไม่เอา TP: 0
+                    suggested_tp = val
+            
+            # หา Reason (รองรับหลายรูปแบบ)
             if "reason" in line.lower():
-                # แยกหลังคำว่า "Reason:"
                 parts = line.split(':', 1)
                 if len(parts) > 1:
                     reason = parts[1].strip()
                 else:
                     reason = line
         
-        # ✅ ถ้า reason ยังว่าง → ใช้ข้อความทั้งหมดที่ไม่ใช่ decision/confidence
+        # ถ้า reason ยังว่าง -> ใช้ข้อความทั้งหมดที่ไม่ใช่ decision/confidence/sl/tp
         if not reason:
             reason = ' '.join([l for l in lines if 'confidence' not in l.lower() 
                             and 'confirm' not in l.lower() 
-                            and 'reject' not in l.lower()])
+                            and 'reject' not in l.lower()
+                            and not re.match(r'(?:SL|TP|Stop|Take)', l, re.IGNORECASE)])
         
-        logger.debug(f"Parsed: decision={decision}, confidence={confidence}, reason={reason}")
+        logger.debug(f"Parsed: decision={decision}, confidence={confidence}, reason={reason}, sl={suggested_sl}, tp={suggested_tp}")
+        
+        # ถ้า REJECT -> ไม่ส่ง SL/TP
+        if decision == "REJECT":
+            suggested_sl = None
+            suggested_tp = None
         
         return {
             "decision": decision,
             "confidence": confidence,
-            "reason": reason if reason else "No reason provided",  # ✅ ป้องกันว่าง
-            "provider": provider
+            "reason": reason if reason else "No reason provided",
+            "provider": provider,
+            "suggested_sl": suggested_sl,
+            "suggested_tp": suggested_tp
         }
 
 class QuotaExceededError(Exception):

@@ -13,8 +13,8 @@ if sys.platform == "win32":
 from config import *
 from data.market_data import get_market_data, get_market_data_htf
 from strategy.signal_engine import get_signal, create_features, is_overextended, market_structure
+from risk.risk_engine import calculate_sl_tp, find_last_swing_low, find_last_swing_high
 from execution.signal_writer import write_signal
-from risk.risk_engine import calculate_sl_tp
 from notify.line_notify import send_line
 from notify.news_manager import is_news_active
 from strategy.ai_gatekeeper import gatekeeper
@@ -653,6 +653,9 @@ SELL Position Closed
 """)
                 signal = "NONE"
 
+        ai_suggested_sl = None
+        ai_suggested_tp = None
+
         if signal in ["BUY", "SELL"] and USE_AI_GATEKEEPER:
             
             market_state = {
@@ -661,7 +664,10 @@ SELL Position Closed
                 "ltf_trend": "UP" if last['ema50'] > last['ema200'] else "DOWN",
                 "rsi": round(last['rsi'], 2),
                 "atr": round(last['atr'], 2),
-                "structure": market_structure(df)
+                "structure": market_structure(df),
+                "swing_low": round(find_last_swing_low(df), 2),
+                "swing_high": round(find_last_swing_high(df), 2),
+                "ema50": round(last['ema50'], 2)
             }
             
             signal_data = {
@@ -675,6 +681,11 @@ SELL Position Closed
             if ai_result and ai_result.get('reason'):
                 ai_result['reason'] = ai_result['reason'].encode('ascii', errors='replace').decode('ascii')
             ai_confidence = ai_result.get('confidence', 0)
+            ai_suggested_sl = ai_result.get('suggested_sl')
+            ai_suggested_tp = ai_result.get('suggested_tp')
+            
+            if ai_suggested_sl and ai_suggested_tp:
+                logger.info(f"AI suggested SL={ai_suggested_sl}, TP={ai_suggested_tp}")
             
             if ai_result['decision'] == "REJECT" or ai_result['confidence'] < AI_CONFIDENCE_THRESHOLD:
                 logger.info(f"AI Gatekeeper Rejected Signal. Reason: {ai_result['reason']} (Confidence: {ai_result['confidence']}%)")
@@ -697,7 +708,8 @@ SELL Position Closed
         tp = None
 
         if signal in ["BUY", "SELL"]:
-            sl, tp = calculate_sl_tp(df, signal, price)
+            sl, tp = calculate_sl_tp(df, signal, price, ai_sl=ai_suggested_sl, ai_tp=ai_suggested_tp)
+            sl_source = "AI" if (ai_suggested_sl and ai_suggested_tp and sl == round(ai_suggested_sl, 3)) else "Technical"
 
             if sl is None or tp is None:
 
@@ -716,6 +728,7 @@ SELL Position Closed
 
 🛑 Stop Loss : {round(sl,2)}
 🎯 Take Profit : {round(tp,2)}
+🤖 SL/TP Source : {sl_source}
 ⏰ {thai_time.strftime("%H:%M")}
 ──────────────────
 🚀 Gold Quant Bot
