@@ -61,24 +61,34 @@ QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") or os.getenv("AI_API_KEY", "")
 QWEN_MODEL = "qwen/qwen-plus"
 QWEN_FREE_MODEL = "qwen/qwen3.6-plus-preview:free"
+QWEN_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 GEMINI_MODEL = "gemini-2.0-flash"
+
+# AI Fallback Chain
+AI_PRIMARY = "qwen"
+AI_SECONDARY = "gemini"
+FALLBACK_TO_SECONDARY = True
+FALLBACK_CONFIDENCE = 60
+SILENT_FALLBACK = True
 
 # =========================
 # 🦈 PREDATORY FILTERS (SMC)
 # =========================
 STRICT_TREND_FILTER = True
-MAX_EMA_SLOPE = 0.3          # ปรับให้ยืดหยุ่นขึ้นนิดหน่อย
-MAX_EMA_ATR_DISTANCE = 4.5    # ป้องกันการเข้าไม้ที่ "ดอย" หรือ "เหว"
-LIQUIDITY_LOOKBACK = 20      # มองไกลขึ้นเพื่อหาฐานแนวรับแนวต้านจริง
+MAX_EMA_SLOPE = 0.3
+MAX_EMA_ATR_DISTANCE = 4.5
+LIQUIDITY_LOOKBACK = 20
 
 # =========================
 # ⏰ TIME & NEWS
 # =========================
 USE_NEWS_FILTER = True
-NEWS_WAIT_MINUTES = 45       # รอนานขึ้นนิดหน่อยช่วงข่าวแรง
+NEWS_WAIT_MINUTES = 45
 MAX_TRADES_PER_DAY = 50
-TRADE_COOLDOWN = 10          # รอ 10 นาทีระว่างไม้ (กันการยิงรัว)
-LOSS_COOLDOWN = 30           # พัก 30 นาทีถ้าแพ้ (สงบสติบัญชี)
+TRADE_COOLDOWN = 10
+LOSS_COOLDOWN = 30
+COOLDOWN_SECONDS = 15
+DAILY_RISK_PERCENT = 0.10
 
 # =========================
 # 🚨 MONITORING
@@ -86,3 +96,4 @@ LOSS_COOLDOWN = 30           # พัก 30 นาทีถ้าแพ้ (ส�
 NOTIFY_PROVIDER = "TELEGRAM"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
