@@ -50,6 +50,7 @@ def write_file_safe(filename, content):
 # =========================
 def main():
     logger.info("GOLD QUANT PRO (SIGNAL ONLY): SYSTEM START")
+    send_line("🟢 [GOLD PRO] Radar Scanner is now ONLINE!")
     
     current_day = datetime.now(timezone.utc).day
     trades_today = 0
