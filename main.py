@@ -98,7 +98,7 @@ def main():
             # --- 🛡️ Risk, AI Gatekeeper & Execution ---
             if signal in ["BUY", "SELL"]:
                 if (candle_counter - last_trade_candle) < TRADE_COOLDOWN:
-                    # ติดคูลดาวน์ ไม่ทำอะไร
+                    logger.info("Trade cooldown active")
                     signal = "NONE"
                 else:
                     # --- 🧔 AI Gatekeeper Validation ---
@@ -124,7 +124,7 @@ def main():
                     mult = 1.5 if ai_confidence >= 80 else (0.5 if ai_confidence < 50 else 1.0)
                     lot = round(max(MIN_LOT, min(BASE_LOT * mult, MAX_LOT)), 2)
                     
-                    logger.info(f"[SIGNAL] {signal} AT {price} | Lot: {lot}")
+                    logger.info(f"[SIGNAL] {signal} CONFIRMED | Price: {price:.2f} | Lot: {lot}")
                     if not IS_ANALYSIS_MODE:
                         write_file_safe("bot_active_trade.txt", "1")
                         write_file_safe("bot_active_trade_dir.txt", signal)
@@ -133,6 +133,10 @@ def main():
                         send_line(f"🎯 [GOLD PRO] {signal} AT {price}\n🏆 TP: {tp} | 🛡️ SL: {sl}\n⚖️ Lot: {lot} (Conf: {ai_confidence}%)")
                 else:
                     logger.error("Failed to calculate SL/TP levels.")
+                    signal = "NONE"
+
+            if signal == "NONE":
+                logger.info(f"[NONE] No Pattern | Price: {price:.2f} | ATR: {df.iloc[-1]['atr']:.2f} | RSI: {df.iloc[-1]['rsi']:.2f}")
 
             # --- ⏳ Wait for Next Candle ---
             time.sleep(30)

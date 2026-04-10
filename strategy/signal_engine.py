@@ -113,35 +113,34 @@ def get_signal(df, df_htf):
 
     breakout = breakout_detection(df)
     sweep = liquidity_sweep(df)
-    mom_up = last["high"] > prev["high"] and last["close"] > prev["high"]
-    mom_down = last["low"] < prev["low"] and last["close"] < prev["low"]
+    # 🛡️ Balanced Momentum (แท่งเทียนที่ชนะทิศทางเก่าได้)
+    mom_up = (last["close"] > last["open"]) and (last["close"] > prev["high"])
+    mom_down = (last["close"] < last["open"]) and (last["close"] < prev["low"])
 
-    # --- 🦈 PREDATORY LOGIC (ปรับให้เจอโอกาสง่ายขึ้น แล้วส่งให้สภากรอง) ---
+    # --- 🦈 PREDATORY LOGIC (Balanced Filter) ---
     if not session_filter(): return "NONE", "Market Closed"
 
-    # 1. Sweep + Reject (High Quality)
+    # 1. Sweep + Reject (High Quality Reversal)
     if htf_up and sweep == "BUY_SWEEP":
         return "BUY", "Institutional Sweep Setup (BUY)"
     if htf_down and sweep == "SELL_SWEEP":
         return "SELL", "Institutional Sweep Setup (SELL)"
 
-    # 2. Strong Momentum + Trend Alignment
+    # 2. Strong Momentum + Trend Alignment (Smart Trend)
     if trend_up and htf_up and mom_up:
-        if reject_type == "BULL_REJECT" or (last["close"] > prev["high"] and last["volume"] > avg_vol):
-            return "BUY", "Strong Trend Continuation (BUY)"
+        return "BUY", "Strong Trend Continuation (BUY)"
             
     if trend_down and htf_down and mom_down:
-        if reject_type == "BEAR_REJECT" or (last["close"] < prev["low"] and last["volume"] > avg_vol):
-            return "SELL", "Strong Trend Continuation (SELL)"
+        return "SELL", "Strong Trend Continuation (SELL)"
 
-    # 3. Safe Pullback (ย่อซื้อ-เด้งขาย)
-    if htf_up and last["ema9"] > last["ema50"] and last["rsi"] < 45:
-        if reject_type == "BULL_REJECT" or mom_up:
-            return "BUY", "Deep Pullback in Uptrend (BUY)"
+    # 3. Safe Pullback (ย่อซื้อ-เด้งขาย โซน RSI ถูก)
+    if trend_up and htf_up and last["rsi"] < 45:
+        if reject_type == "BULL_REJECT":
+            return "BUY", "Deep Pullback Pinbar in Uptrend (BUY)"
             
-    if htf_down and last["ema9"] < last["ema50"] and last["rsi"] > 55:
-        if reject_type == "BEAR_REJECT" or mom_down:
-            return "SELL", "High Pullback in Downtrend (SELL)"
+    if trend_down and htf_down and last["rsi"] > 55:
+        if reject_type == "BEAR_REJECT":
+            return "SELL", "High Pullback Pinbar in Downtrend (SELL)"
 
     return "NONE", "Hunting for better entry..."
 
