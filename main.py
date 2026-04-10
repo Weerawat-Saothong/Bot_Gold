@@ -55,6 +55,7 @@ def main():
     current_day = datetime.now(timezone.utc).day
     trades_today = 0
     last_trade_candle = -100
+    market_closed_logged = False
 
     while True:
         try:
@@ -136,7 +137,13 @@ def main():
                     signal = "NONE"
 
             if signal == "NONE":
-                logger.info(f"[NONE] No Pattern | Price: {price:.2f} | ATR: {df.iloc[-1]['atr']:.2f} | RSI: {df.iloc[-1]['rsi']:.2f}")
+                if reason == "Market Closed":
+                    if not market_closed_logged:
+                        logger.info("Market Closed / Out of trading hours. Radar on standby...")
+                        market_closed_logged = True
+                else:
+                    market_closed_logged = False
+                    # ไม่ปรินท์ No Pattern เพื่อความสะอาดตาหน้าจอ
 
             # --- ⏳ Wait for Next Candle ---
             time.sleep(30)
