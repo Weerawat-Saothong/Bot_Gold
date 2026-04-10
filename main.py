@@ -94,24 +94,30 @@ def main():
             signal, reason = get_signal(df, df_htf)
             price = df.iloc[-1]["close"]
 
-            # --- 🧔 AI Gatekeeper Validation ---
-            ai_confidence = 50
-            if signal in ["BUY", "SELL"] and USE_AI_GATEKEEPER:
-                logger.info(f"Checking {signal} with AI Council...")
-                market_state = {
-                    "price": round(price, 2),
-                    "htf_trend": "UP" if df_htf.iloc[-1]['ema50'] > df_htf.iloc[-1]['ema200'] else "DOWN",
-                    "rsi": round(df.iloc[-1]['rsi'], 2), "atr": round(df.iloc[-1]['atr'], 2),
-                    "swing_low": find_last_swing_low(df), "swing_high": find_last_swing_high(df)
-                }
-                ai_res = gatekeeper.validate_signal(market_state, {"direction": signal, "pattern": reason})
-                ai_confidence = ai_res.get('confidence', 50)
-                if ai_res['decision'] == "REJECT" or ai_confidence < AI_CONFIDENCE_THRESHOLD:
-                    logger.warning(f"AI Council Rejected {signal}: {ai_res['reason']}")
+            # --- 🛡️ Risk, AI Gatekeeper & Execution ---
+            if signal in ["BUY", "SELL"]:
+                if (candle_counter - last_trade_candle) < TRADE_COOLDOWN:
+                    # ติดคูลดาวน์ ไม่ทำอะไร
                     signal = "NONE"
+                else:
+                    # --- 🧔 AI Gatekeeper Validation ---
+                    ai_confidence = 50
+                    if USE_AI_GATEKEEPER:
+                        logger.info(f"Checking {signal} with AI Council...")
+                        market_state = {
+                            "price": round(price, 2),
+                            "htf_trend": "UP" if df_htf.iloc[-1]['ema50'] > df_htf.iloc[-1]['ema200'] else "DOWN",
+                            "rsi": round(df.iloc[-1]['rsi'], 2), "atr": round(df.iloc[-1]['atr'], 2),
+                            "swing_low": find_last_swing_low(df), "swing_high": find_last_swing_high(df)
+                        }
+                        ai_res = gatekeeper.validate_signal(market_state, {"direction": signal, "pattern": reason})
+                        ai_confidence = ai_res.get('confidence', 50)
+                        if ai_res['decision'] == "REJECT" or ai_confidence < AI_CONFIDENCE_THRESHOLD:
+                            logger.warning(f"AI Council Rejected {signal}: {ai_res['reason']}")
+                            signal = "NONE"
 
-            # --- 🛡️ Risk & Execution (ONLY OPEN TRADES) ---
-            if signal in ["BUY", "SELL"] and (candle_counter - last_trade_candle) >= TRADE_COOLDOWN:
+            # --- Execution (ONLY OPEN TRADES) ---
+            if signal in ["BUY", "SELL"]:
                 sl, tp = calculate_sl_tp(df, signal, price)
                 if sl and tp:
                     mult = 1.5 if ai_confidence >= 80 else (0.5 if ai_confidence < 50 else 1.0)

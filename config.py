@@ -93,7 +93,10 @@ DAILY_RISK_PERCENT = 0.10
 # =========================
 # 🚨 MONITORING
 # =========================
-NOTIFY_PROVIDER = "TELEGRAM"
+NOTIFY_LEVEL = "INFO"          # "INFO" (All), "TRADE" (Only trades), "ERROR" (Only errors)
+NOTIFY_PROVIDER = "TELEGRAM" # "LINE_MESSAGING", "TELEGRAM", "DISABLED"
+SKIP_NON_URGENT = False        # Set True to skip daily reports/online status to save quota
+
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 

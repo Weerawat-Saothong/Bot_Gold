@@ -21,13 +21,16 @@ def send_line(msg):
     Unified notification engine. 
     Supports LINE Messaging API (Broadcast) and Telegram.
     """
-    # Import config inside function to avoid circular imports
     try:
-        from config import NOTIFY_PROVIDER, SKIP_NON_URGENT, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+        import config
+        NOTIFY_PROVIDER = getattr(config, 'NOTIFY_PROVIDER', 'DISABLED')
+        SKIP_NON_URGENT = getattr(config, 'SKIP_NON_URGENT', False)
+        TELEGRAM_TOKEN = getattr(config, 'TELEGRAM_TOKEN', '')
+        TELEGRAM_CHAT_ID = getattr(config, 'TELEGRAM_CHAT_ID', '')
         line_token = os.getenv("LINE_TOKEN")
-    except ImportError:
+    except ImportError as e:
         # Fallback if config not ready
-        logger.error("Config not found. Skipping notify.")
+        logger.error(f"Config import error: {e}")
         return
 
     # Skip non-essential messages if configured
