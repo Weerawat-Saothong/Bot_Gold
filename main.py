@@ -17,10 +17,14 @@ from strategy.ai_gatekeeper import gatekeeper
 # =========================
 # 📝 LOGGING SETUP
 # =========================
+import sys
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.FileHandler("bot_gold_pro.log"), logging.StreamHandler()]
+    handlers=[logging.FileHandler("bot_gold_pro.log", encoding='utf-8'), logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
@@ -45,7 +49,7 @@ def write_file_safe(filename, content):
 # 🔄 MAIN EXECUTION LOOP
 # =========================
 def main():
-    logger.info("🔱 GOLD QUANT PRO (SIGNAL ONLY): SYSTEM START")
+    logger.info("GOLD QUANT PRO (SIGNAL ONLY): SYSTEM START")
     
     current_day = datetime.now(timezone.utc).day
     trades_today = 0
@@ -113,7 +117,7 @@ def main():
                     mult = 1.5 if ai_confidence >= 80 else (0.5 if ai_confidence < 50 else 1.0)
                     lot = round(max(MIN_LOT, min(BASE_LOT * mult, MAX_LOT)), 2)
                     
-                    logger.info(f"🚀 [SIGNAL] {signal} AT {price} | Lot: {lot}")
+                    logger.info(f"[SIGNAL] {signal} AT {price} | Lot: {lot}")
                     if not IS_ANALYSIS_MODE:
                         write_file_safe("bot_active_trade.txt", "1")
                         write_file_safe("bot_active_trade_dir.txt", signal)
