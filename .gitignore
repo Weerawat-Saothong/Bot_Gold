@@ -2,24 +2,48 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.venv/
+*.so
+.Python
 env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
 venv/
 ENV/
 
-# Project Specific
+# Project Specific Data
 *.log
 *.csv
 *.xml
+*.json
+!positions.json
 news_cache.xml
 trades_analysis.csv
 gold_m5.csv
+*.txt
+!requirements.txt
+!approved_signal.txt
+!approved_signal_test.txt
 
-# MT5 Data (Exclude paths from config)
-/Users/x10/Library/Application Support/net.metaquotes.wine.metatrader5/
-
-# OS
+# VS Code & OS
+.vscode/
 .DS_Store
 .env
-__pycache__/
-*.log
+.ipynb_checkpoints
+.gemini/
+
+# MT5 Data
+MT5_Data/
+MQL5/Files/
+/Users/x10/Library/Application Support/net.metaquotes.wine.metatrader5/

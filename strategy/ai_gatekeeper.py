@@ -55,11 +55,12 @@ class AIGatekeeper:
         return self._fallback_silent()
     
     def _fallback_silent(self) -> dict:
+        """ระบบตัดสินใจสำรองเมื่อ AI ทุกตัวล่ม (Guardian Fallback)"""
         return {
-            "decision": "CONFIRM",
-            "confidence": FALLBACK_CONFIDENCE,
-            "reason": "Technical analysis only",
-            "provider": "fallback_silent",
+            "decision": "CONFIRM", 
+            "confidence": 60, # ลดความมั่นใจลงเพื่อแจ้งเตือนว่านี่ไม่ใช่ไม้ระดับเทพ
+            "reason": "⚠️ [Guardian Mode] สภาเทพ Offline - ใช้เทคนิคัลล้วนในการตัดสินใจ",
+            "provider": "Guardian_Fallback",
             "suggested_sl": None,
             "suggested_tp": None
         }

@@ -2,24 +2,22 @@ import platform
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 # =========================
-# AUTO DETECT PLATFORM
+# 🏗️ AUTO DETECT PLATFORM
 # =========================
-
 if platform.system() == "Windows":
     BASE_PATH = "C:\\Program Files\\MetaTrader 5 - Joe\\MQL5\\Files\\"
     IS_ANALYSIS_MODE = False
 else:
-    BASE_PATH = "/Users/x10/Library/Application Support/net.metaquotes.wine.metatrader5/drive_c/Program Files/MetaTrader 5/MQL5/Files/"
+    # Path สำหรับ Mac (Wine/Crossover) - กรุณาตรวจสอบให้ตรงกับเครื่องบอส
+    BASE_PATH = "/Users/x10/Documents/gold/" # แก้ให้ตรงกับ Folder งานหลัก
     IS_ANALYSIS_MODE = True
 
 # =========================
-# FILE PATHS
+# 📂 FILE PATHS
 # =========================
-
 PATH_M5 = BASE_PATH + "market_data_m5.csv"
 PATH_H1 = BASE_PATH + "market_data_h1.csv"
 PATH_SIGNAL = BASE_PATH + "signal.txt"
@@ -27,136 +25,64 @@ PATH_POSITION = BASE_PATH + "position.txt"
 PATH_POSITIONS_JSON = BASE_PATH + "positions.json"
 
 # =========================
-# BOT SETTINGS
+# 💰 TRADING & LOTS
 # =========================
-
-MAX_POSITIONS = 3       # จำนวนไม้สูงสุด (แนะนำ 3 สำหรับ Balanced)
-COOLDOWN_SECONDS = 15   # ระยะเวลารอระหว่างไม้
-
-# =========================
-# MONITORING & ALERTS
-# =========================
-USE_DYNAMIC_LOT = True       # ← เพิ่มบรรทัดนี้
-MIN_LOT = 0.01               # ← เพิ่มบรรทัดนี้
-MAX_LOT = 0.08               # ← เพิ่มบรรทัดนี้
-BASE_LOT = 0.03              # ← เปลี่ยนจาก 0.01 เป็น 0.03
-           
-RISK_PER_TRADE_USD = 10.0        # ยอมเสียสูงสุด $10 ต่อไม้ (ปรับได้ตามพอร์ต)
-
-# [NOTIFICATION SETTINGS] 
-# LINE Notify is DEAD in 2026. Use LINE_MESSAGING (Paid/Limited) or TELEGRAM (Free/Unlimited)
-NOTIFY_LEVEL = "INFO"          # "INFO" (All), "TRADE" (Only trades), "ERROR" (Only errors)
-NOTIFY_PROVIDER = "TELEGRAM" # "LINE_MESSAGING", "TELEGRAM", "DISABLED"
-SKIP_NON_URGENT = False        # Set True to skip daily reports/online status to save LINE quota
-
-# Telegram Settings (Recommended for Unlimited Free Alerts)
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
-
-HIGH_CONFIDENCE_LOT = 0.02      # ล๊อตเมื่อ AI มั่นใจเกิน 90%
+MAX_POSITIONS = 3           # จำนวนไม้สูงสุด
+BASE_LOT = 0.03              # ล็อตเริ่มต้น
+USE_DYNAMIC_LOT = True       # ใช้ระบบคำนวณล็อตตามความเชื่อมั่น AI
+MIN_LOT = 0.01
+MAX_LOT = 0.10               # ปรับเพิ่มเพดานให้นิดหน่อยสำหรับไม้เทพ
+RISK_PER_TRADE_USD = 15.0    # ยอมเสียสูงสุด $15 ต่อไม้
 
 # =========================
-# EA RISK LOGIC (Trailing & Breakeven)
+# 🛡️ PREDATORY RISK SETTINGS
+# =========================
+RR_RATIO = 2.0               # เป้าหมายกำไรขั้นต่ำ 1:2 (Institutional Standard)
+ATR_SL_BUFFER = 0.8          # ระยะเผื่อ SL (0.8 ถึง 1.5 ATR กำลังดีสำหรับทอง)
+MIN_SL_DISTANCE = 1.5        # ระยะ SL ขั้นต่ำ (ไม่ให้ใกล้จนโดนสะบัด)
+
+# =========================
+# 🛸 EA LOGIC (TRAILING/BE)
 # =========================
 USE_TRAILING_STOP = False
-USE_BREAKEVEN = False    
-
-TRAILING_START = 30.0    
-TRAILING_STEP = 5.0      
-BREAKEVEN_START = 20.0   
+USE_BREAKEVEN = True         # แนะนำให้เปิดไว้สำหรับทอง
+BREAKEVEN_START = 15.0       # เริ่มกันทุนที่กำไร +$15
+BREAKEVEN_PROFIT = 5.0       # ล็อกกำไรไว้ที่ +$5
 
 # =========================
-# SAFETY FILTERS
-# =========================
-STRICT_TREND_FILTER = True  # ห้ามสวนเทรนด์เมื่อ EMA ชันมากๆ
-MAX_EMA_SLOPE = 0.2         # ปรับจาก 0.5 เป็น 0.2 (สมดุลขึ้น)
-MAX_EMA_ATR_DISTANCE = 4.0   # ปรับจาก 8.0 เป็น 4.0 (ป้องกันปลายยอด)
-
-# =========================
-# SIGNAL FILTERS (Balanced Mode)
-# =========================
-
-# Time Filter (Broker Time)
-TRADE_START_HOUR = 0
-TRADE_END_HOUR = 23
-
-# RSI Safe Zone (More Selective for Higher Winrate)
-RSI_BUY_MIN = 40       
-RSI_BUY_MAX = 70       
-RSI_SELL_MIN = 30      
-RSI_SELL_MAX = 60      
-
-# Volatility Filter (Middle Ground)
-MAX_ATR_LIMIT = 20.0    # เพิ่มจาก 15 เพื่อรองรับตลาดทองผันผวนสูง (ATR 10-15 ปกติในช่วง trend แรง)
-
-# =========================
-# BLACK SWAN (MOMENTUM) MODE
-# =========================
-ENABLE_BLACK_SWAN = True      
-BLACK_SWAN_ATR_MIN = 10.0     # ลดจาก 12 เพื่อให้ trigger ง่ายขึ้น
-BLACK_SWAN_RSI_SELL = 25      # เพิ่มจาก 13 (RSI ต่ำกว่า 13 แทบไม่มีทางเกิด)
-BLACK_SWAN_RSI_BUY = 75        # ลดจาก 85 เพื่อให้ trigger ได้ง่ายขึ้น
-
-
-# =========================
-# AI SETTINGS
-# =========================
-
-MIN_SL_DISTANCE = 2.0
-TRADE_COOLDOWN = 3
-LOSS_COOLDOWN = 5
-
-# =========================
-# TRADING LIMITS
-# =========================
-
-MAX_TRADES_PER_DAY = 100
-DAILY_RISK_PERCENT = 0.10
-
-# =========================
-# SIGNAL SETTINGS
-# =========================
-
-MIN_DISTANCE_FOR_SIGNAL = 0.1   # ลดจาก 0.5 เพื่อให้เข้าได้ใกล้ EMA มากขึ้น
-ATR_VOLATILITY_MULTIPLIER = 1.0
-ATR_MIN_VOLATILITY = 0.8        # ลดจาก 1.2 เพื่อให้เทรดได้ในตลาดปกติ
-CANDLE_RANGE_THRESHOLD = 80     # เพิ่มจาก 30 เพื่อรองรับแท่งเทียนที่ใหญ่ขึ้นในทองคำ
-MARKET_STRUCTURE_PERIOD = 5
-LIQUIDITY_LOOKBACK = 14         # ปรับจาก 21 เพื่อให้หาจุด Sweep ได้เร็วขึ้น
-
-# =========================
-# NEWS FILTER SETTINGS
-# =========================
-USE_NEWS_FILTER = True
-NEWS_WAIT_MINUTES = 30  # Stop trading 30 min before/after high-impact news
-NEWS_CURRENCY = "USD"
-NEWS_IMPACT = "high"
-
-# =========================
-# AI GATEKEEPER SETTINGS (Free Maximizer)
+# 🧠 AI GATEKEEPER (THE GUARD)
 # =========================
 USE_AI_GATEKEEPER = True
-AI_CONFIDENCE_THRESHOLD = 45
+AI_CONFIDENCE_THRESHOLD = 50 # เพิ่มความเข้มงวดให้ถึง 50%
+SUPPRESS_API_ERRORS = False
 
-# [UPDATE] Fallback Order: Qwen (ฟรี) → Gemini (ฟรี) → 70% (เงียบ)
-AI_PRIMARY = "qwen"
-AI_SECONDARY = "gemini"
-
-# [SELL] Qwen Settings (ผ่าน OpenRouter - มีฟรีเครดิต)
-QWEN_MODEL = "qwen/qwen-plus"  # หรือ "qwen/qwen-turbo" (ถูกกว่า)
+# [KEYS] - ดึงจาก Environment
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
-QWEN_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
-
-# 🟣 Gemini Settings (ฟรี 100%)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") or os.getenv("AI_API_KEY", "")
+QWEN_MODEL = "qwen/qwen-plus"
+QWEN_FREE_MODEL = "qwen/qwen3.6-plus-preview:free"
 GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_API_KEY = os.getenv("AI_API_KEY", "")
-
-# ⚙️ Fallback Behavior
-FALLBACK_TO_SECONDARY = True      # ถ้า Qwen หมด → ไป Gemini
-FALLBACK_CONFIDENCE = 70          # ถ้าทั้งคู่หมด → ใช้ค่านี้
-SILENT_FALLBACK = True            # ไม่ log เมื่อใช้ fallback สุดท้าย
 
 # =========================
-# OVEREXTENDED FILTER (PREVENT PEAK/BOTTOM ENTRY)
+# 🦈 PREDATORY FILTERS (SMC)
 # =========================
-MAX_EMA_ATR_DISTANCE = 5.0      # ถ้าห่างจาก EMA50 เกิน 5.0 เท่าของ ATR บอทจะหยุดเข้าไม้ (ป้องกันปลายไส้)
+STRICT_TREND_FILTER = True
+MAX_EMA_SLOPE = 0.3          # ปรับให้ยืดหยุ่นขึ้นนิดหน่อย
+MAX_EMA_ATR_DISTANCE = 4.5    # ป้องกันการเข้าไม้ที่ "ดอย" หรือ "เหว"
+LIQUIDITY_LOOKBACK = 20      # มองไกลขึ้นเพื่อหาฐานแนวรับแนวต้านจริง
+
+# =========================
+# ⏰ TIME & NEWS
+# =========================
+USE_NEWS_FILTER = True
+NEWS_WAIT_MINUTES = 45       # รอนานขึ้นนิดหน่อยช่วงข่าวแรง
+MAX_TRADES_PER_DAY = 50
+TRADE_COOLDOWN = 10          # รอ 10 นาทีระว่างไม้ (กันการยิงรัว)
+LOSS_COOLDOWN = 30           # พัก 30 นาทีถ้าแพ้ (สงบสติบัญชี)
+
+# =========================
+# 🚨 MONITORING
+# =========================
+NOTIFY_PROVIDER = "TELEGRAM"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
