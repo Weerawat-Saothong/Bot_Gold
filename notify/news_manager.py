@@ -9,8 +9,10 @@ logger = logging.getLogger(__name__)
 # Forex Factory RSS Feed
 NEWS_URL = "https://www.forexfactory.com/ff_calendar_thisweek.xml"
 
+from config import BASE_PATH
+
 # Cache settings
-CACHE_FILE = "news_cache.xml"
+CACHE_FILE = os.path.join(BASE_PATH, "news_cache.xml")
 CACHE_DURATION_HOURS = 6
 
 def fetch_news():
@@ -25,14 +27,13 @@ def fetch_news():
                 with open(CACHE_FILE, 'r') as f:
                     return f.read()
 
-        logger.info("Fetching fresh news from Forex Factory...")
-        response = requests.get(NEWS_URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        response = requests.get(NEWS_URL, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout=10)
         if response.status_code == 200:
             with open(CACHE_FILE, 'w') as f:
                 f.write(response.text)
             return response.text
     except Exception as e:
-        logger.error(f"Error fetching news: {e}")
+        logger.debug(f"Error fetching news from ForexFactory: {e}")
     
     # Fallback to cache if exists
     if os.path.exists(CACHE_FILE):
