@@ -1,12 +1,14 @@
 import pandas as pd
+import numpy as np
 import logging
 from datetime import datetime, timezone
 from config import *
+from strategy.global_radar import get_global_market_status
 
 logger = logging.getLogger(__name__)
 
 # ------------------------
-# CREATE FEATURES
+# 🧠 ADVANCED FEATURES (SMC & PRICE ACTION)
 # ------------------------
 
 def create_features(df):
@@ -14,11 +16,9 @@ def create_features(df):
         df.columns = df.columns.get_level_values(0)
 
     df.columns = df.columns.str.lower()
+    if "volume" not in df.columns: df["volume"] = 1
 
-    if "volume" not in df.columns:
-        df["volume"] = 1
-
-    # EMA
+    # EMAs
     df["ema9"] = df["close"].ewm(span=9).mean()
     df["ema20"] = df["close"].ewm(span=20).mean()
     df["ema50"] = df["close"].ewm(span=50).mean()
@@ -26,126 +26,110 @@ def create_features(df):
 
     # RSI
     delta = df["close"].diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
+    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    df["rsi"] = 100 - (100 / (1 + (gain / loss)))
 
-    avg_gain = gain.rolling(14).mean()
-    avg_loss = loss.rolling(14).mean()
-    
-    rs = avg_gain / avg_loss
-    df["rsi"] = 100 - (100 / (1 + rs))
-
-    # ATR (Volatility)
-    high_low = df["high"] - df["low"]
-    high_close = (df["high"] - df["close"].shift()).abs()
-    low_close = (df["low"] - df["close"].shift()).abs()
-    ranges = pd.concat([high_low, high_close, low_close], axis=1)
-    true_range = ranges.max(axis=1)
-    df["atr"] = true_range.rolling(14).mean()
+    # ATR
+    hl = df["high"] - df["low"]
+    hc = (df["high"] - df["close"].shift()).abs()
+    lc = (df["low"] - df["close"].shift()).abs()
+    df["atr"] = pd.concat([hl, hc, lc], axis=1).max(axis=1).rolling(14).mean()
 
     return df
 
 # ------------------------
-# FILTERS & HELPERS
+# 🦈 PREDATORY SMC DETECTORS
 # ------------------------
+
+def detect_fvg(df):
+    """ตรวจจับช่องว่างราคา (Fair Value Gap) - พลังงานจากรายใหญ่"""
+    if len(df) < 3: return "NONE"
+    c1, c2, c3 = df.iloc[-3], df.iloc[-2], df.iloc[-1]
+    
+    # Bullish FVG (Gap ระหว่าง Low ของแท่ง 3 กับ High ของแท่ง 1)
+    if c3["low"] > c1["high"]: return "BULL_FVG"
+    # Bearish FVG (Gap ระหว่าง High ของแท่ง 3 กับ Low ของแท่ง 1)
+    if c3["high"] < c1["low"]: return "BEAR_FVG"
+    return "NONE"
+
+def liquidity_sweep(df):
+    """ตรวจจับการกวาดสภาพคล่อง (Liquidity Grab) - หลอกกิน SL"""
+    lookback = 20
+    last, prev = df.iloc[-1], df.iloc[-20:-1]
+    
+    # แท่งปัจจุบันแทงทะลุยอดเก่าแต่กลับมาปิดข้างใน (Pinbar / Fakeout)
+    if last["high"] > prev["high"].max() and last["close"] < prev["high"].max():
+        return "SELL_SWEEP"
+    if last["low"] < prev["low"].min() and last["close"] > prev["low"].min():
+        return "BUY_SWEEP"
+    return "NONE"
 
 def session_filter():
     now = datetime.now(timezone.utc)
     if now.weekday() >= 5: return False
+    # 04:00 - 06:00 AM Thailand
     if 21 <= now.hour <= 22: return False
     return True
 
-def breakout_detection(df):
-    last = df.iloc[-1]
-    high_20 = df["high"].iloc[-20:-1].max()
-    low_20 = df["low"].iloc[-20:-1].min()
-    if last["close"] > high_20: return "BREAKOUT_BUY"
-    if last["close"] < low_20: return "BREAKOUT_SELL"
-    return "NONE"
-
-def liquidity_sweep(df):
-    last = df.iloc[-1]
-    high_lookback = df["high"].iloc[-20:-1].max()
-    low_lookback = df["low"].iloc[-20:-1].min()
-    if last["high"] > high_lookback and last["close"] < high_lookback: return "SELL_SWEEP"
-    if last["low"] < low_lookback and last["close"] > low_lookback: return "BUY_SWEEP"
-    return "NONE"
-
-def detect_fvg(df):
-    if len(df) < 3: return "NONE", 0, 0
-    p1, p3 = df.iloc[-3], df.iloc[-1]
-    if p3["low"] > p1["high"]: return "BULL_FVG", p1["high"], p3["low"]
-    if p3["high"] < p1["low"]: return "BEAR_FVG", p3["high"], p1["low"]
-    return "NONE", 0, 0
-
-def detect_rejection(df):
-    last = df.iloc[-1]
-    body = abs(last["close"] - last["open"])
-    upper_wick = last["high"] - max(last["open"], last["close"])
-    lower_wick = min(last["open"], last["close"]) - last["low"]
-    atr = last["atr"]
-    if atr == 0: return "NONE"
-    if upper_wick > (body * 2) and upper_wick > (atr * 0.5): return "BEAR_REJECT"
-    if lower_wick > (body * 2) and lower_wick > (atr * 0.5): return "BULL_REJECT"
-    return "NONE"
-
 # ------------------------
-# MAIN SIGNAL ENGINE
+# 🎫 THE GOLDEN SIGNAL ENGINE
 # ------------------------
 
 def get_signal(df, df_htf):
-    if len(df) < 50: return "NONE", "Insufficient data"
-
-    last, prev = df.iloc[-1], df.iloc[-2]
+    if df is None or len(df) < 50: return "NONE", "Initializing Data..."
+    
+    last = df.iloc[-1]
+    prev = df.iloc[-2]
     last_htf = df_htf.iloc[-1]
     
-    # 🧪 ADVANCED ANALYTICS
-    avg_vol = df["volume"].iloc[-20:-1].mean()
-    vol_spike = last["volume"] > (avg_vol * 1.5)
-    fvg_type, _, _ = detect_fvg(df)
-    reject_type = detect_rejection(df)
-    
-    # TRENDS
-    trend_up = last["ema50"] > last["ema200"] and last["ema9"] > last["ema50"]
-    trend_down = last["ema50"] < last["ema200"] and last["ema9"] < last["ema50"]
+    # --- 📊 TREND BIAS ---
+    trend_up = last["ema50"] > last["ema200"] and last["close"] > last["ema50"]
+    trend_down = last["ema50"] < last["ema200"] and last["close"] < last["ema50"]
     htf_up = last_htf["ema50"] > last_htf["ema200"]
-    htf_down = last_htf["ema50"] < last_htf["ema200"]
-
-    breakout = breakout_detection(df)
+    
+    # --- 🎯 PATTERNS ---
+    fvg = detect_fvg(df)
     sweep = liquidity_sweep(df)
-    # 🛡️ Balanced Momentum (แท่งเทียนที่ชนะทิศทางเก่าได้)
-    mom_up = (last["close"] > last["open"]) and (last["close"] > prev["high"])
-    mom_down = (last["close"] < last["open"]) and (last["close"] < prev["low"])
+    engulf_up = last["close"] > prev["high"] and last["close"] > last["open"]
+    engulf_down = last["close"] < prev["low"] and last["close"] < last["open"]
 
-    # --- 🦈 PREDATORY LOGIC (Balanced Filter) ---
     if not session_filter(): return "NONE", "Market Closed"
 
-    # 1. Sweep + Reject (High Quality Reversal)
-    if htf_up and sweep == "BUY_SWEEP":
-        return "BUY", "Institutional Sweep Setup (BUY)"
-    if htf_down and sweep == "SELL_SWEEP":
-        return "SELL", "Institutional Sweep Setup (SELL)"
+    # --- 🌍 GLOBAL MARKET INSIGHT (Context Only) ---
+    radar = get_global_market_status()
+    dxy_vibe = radar["dxy_vibe"]
+    context = f" [Context: DXY {dxy_vibe}]"
 
-    # 2. Strong Momentum + Trend Alignment (Smart Trend)
-    if trend_up and htf_up and mom_up:
-        return "BUY", "Strong Trend Continuation (BUY)"
+    # 💎 1. INSTITUTIONAL SWEEP (Smart Filter: RSI OS/OB)
+    if sweep == "BUY_SWEEP" and last["rsi"] < 45:
+        return "BUY", f"Smart Liquidity Sweep (Bullish Reversal){context}"
+    if sweep == "SELL_SWEEP" and last["rsi"] > 55:
+        return "SELL", f"Smart Liquidity Sweep (Bearish Reversal){context}"
+
+    # 💎 2. SMART MONEY FVG (Smart Filter: HTF Alignment)
+    if fvg == "BULL_FVG" and htf_up and last["rsi"] < 65:
+        return "BUY", f"Institutional FVG (Trend Alignment){context}"
+    if fvg == "BEAR_FVG" and not htf_up and last["rsi"] > 35:
+        return "SELL", f"Institutional FVG (Trend Alignment){context}"
+
+    # 💎 3. PULLBACK & REJECTION (Smart Filter: Primary Trend)
+    if last["low"] < last["ema20"] and (htf_up or trend_up):
+        if engulf_up and last["rsi"] < 60: 
+            return "BUY", f"Smart Pullback Rejection{context}"
             
-    if trend_down and htf_down and mom_down:
-        return "SELL", "Strong Trend Continuation (SELL)"
+    if last["high"] > last["ema20"] and (not htf_up or trend_down):
+        if engulf_down and last["rsi"] > 40:
+            return "SELL", f"Smart Pullback Rejection{context}"
 
-    # 3. Safe Pullback (ย่อซื้อ-เด้งขาย โซน RSI ถูก)
-    if trend_up and htf_up and last["rsi"] < 45:
-        if reject_type == "BULL_REJECT":
-            return "BUY", "Deep Pullback Pinbar in Uptrend (BUY)"
-            
-    if trend_down and htf_down and last["rsi"] > 55:
-        if reject_type == "BEAR_REJECT":
-            return "SELL", "High Pullback Pinbar in Downtrend (SELL)"
+    # 💎 4. STRONG TREND PUSH (Smart Filter: Volume Confirmation)
+    avg_vol = df["volume"].iloc[-20:].mean()
+    if engulf_up and trend_up and last["volume"] > avg_vol * 1.1:
+        if last["rsi"] < 70: return "BUY", f"High-Volume Trend Push{context}"
+        
+    if engulf_down and trend_down and last["volume"] > avg_vol * 1.1:
+        if last["rsi"] > 30: return "SELL", f"High-Volume Trend Push{context}"
 
-    return "NONE", "Hunting for better entry..."
+    return "NONE", "Scanning for High-Probability Institutional Entries..."
 
-# Legacy function stubs for compatibility
-def market_structure(df): return "NONE"
-def is_overextended(p, e, a, d): return False
-def check_trend_safety(df): return "SAFE", 0.0
-def check_flash_crash(df): return "SAFE"
+    return "NONE", "Hunting for Institutional Entry..."
