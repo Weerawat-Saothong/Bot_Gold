@@ -52,6 +52,17 @@ def main():
     logger.info("GOLD QUANT PRO (SIGNAL ONLY): SYSTEM START")
     send_line("🟢 [GOLD PRO] Radar Scanner is now ONLINE!")
     
+    # --- 🔌 MT5 Connection (For Windows Direct Link) ---
+    if sys.platform == 'win32':
+        try:
+            import MetaTrader5 as mt5
+            if not mt5.initialize():
+                logger.error("MT5 Initialize Failed. Running in CSV Fallback mode.")
+            else:
+                logger.info(f"CONNECTED TO MT5 DIRECT! SYMBOL: {SYMBOL}")
+        except ImportError:
+            logger.warning("MT5 Library not found. Running in CSV Fallback mode.")
+
     current_day = datetime.now(timezone.utc).day
     trades_today = 0
     last_trade_candle = -100

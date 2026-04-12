@@ -18,6 +18,7 @@ else:
 # =========================
 # 📂 FILE PATHS
 # =========================
+SYMBOL = "XAUUSDc"          # ชื่อโบรกเกอร์ (เช่น XAUUSD หรือ XAUUSDc)
 PATH_M5 = BASE_PATH + "market_data_m5.csv"
 PATH_H1 = BASE_PATH + "market_data_h1.csv"
 PATH_SIGNAL = BASE_PATH + "signal.txt"
