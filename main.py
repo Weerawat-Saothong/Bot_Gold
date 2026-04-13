@@ -66,6 +66,7 @@ def main():
     current_day = datetime.now(timezone.utc).day
     trades_today = 0
     last_trade_candle = -100
+    last_signal_time = None          # ⏱️ Time-based cooldown
     market_closed_logged = False
 
     while True:
@@ -106,6 +107,14 @@ def main():
             # --- 🎯 Signal Identification ---
             signal, reason = get_signal(df, df_htf)
             price = df.iloc[-1]["close"]
+
+            # --- ⏱️ Time-Based Cooldown Check ---
+            SIGNAL_GAP_SECONDS = 300  # ห้ามยิงซ้ำใน 5 นาที (ปรับได้)
+            if signal in ["BUY", "SELL"] and last_signal_time is not None:
+                elapsed = (datetime.now(timezone.utc) - last_signal_time).total_seconds()
+                if elapsed < SIGNAL_GAP_SECONDS:
+                    remaining = int(SIGNAL_GAP_SECONDS - elapsed)
+                    signal = "NONE"
 
             # --- 🛡️ Risk, AI Gatekeeper & Execution ---
             if signal in ["BUY", "SELL"]:
@@ -160,6 +169,7 @@ def main():
                         write_file_safe("bot_active_trade_dir.txt", signal)
                         write_signal(signal, sl, tp, lot)
                         last_trade_candle = candle_counter
+                        last_signal_time  = datetime.now(timezone.utc)  # ⏱️ Reset timer
                         send_line(f"🎯 [{tier_tag}] {signal} @ {price}\n🏆 TP: {tp} | 🛡️ SL: {sl}\n⚖️ Lot: {lot} | AI: {ai_confidence}%\n📌 {reason[:60]}")
                 else:
                     logger.error("Failed to calculate SL/TP levels.")
