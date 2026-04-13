@@ -109,39 +109,62 @@ def main():
 
             # --- 🛡️ Risk, AI Gatekeeper & Execution ---
             if signal in ["BUY", "SELL"]:
-                # --- 🧔 AI Gatekeeper Validation ---
-                ai_confidence = 50
+                ai_confidence  = 50
+                ai_sl, ai_tp   = None, None
+                last_candle    = df.iloc[-1]
+                
                 if USE_AI_GATEKEEPER:
-                    logger.info(f"Checking {signal} with AI Council...")
+                    logger.info(f"Checking {signal} [{reason[:30]}] with AI Council...")
+                    
+                    # ดึง Sentiment ก่อนส่ง AI
+                    from strategy.sentiment_radar import get_market_sentiment
+                    try:
+                        sentiment = get_market_sentiment(df)
+                        smart_money = sentiment.get("summary", "N/A")
+                    except Exception:
+                        smart_money = "N/A"
+                    
                     market_state = {
-                        "price": round(price, 2),
-                        "htf_trend": "UP" if df_htf.iloc[-1]['ema50'] > df_htf.iloc[-1]['ema200'] else "DOWN",
-                        "rsi": round(df.iloc[-1]['rsi'], 2), "atr": round(df.iloc[-1]['atr'], 2),
-                        "swing_low": find_last_swing_low(df), "swing_high": find_last_swing_high(df)
+                        "price":        round(price, 2),
+                        "htf_trend":    "UP" if df_htf.iloc[-1]['ema50'] > df_htf.iloc[-1]['ema200'] else "DOWN",
+                        "rsi":          round(last_candle['rsi'], 2),
+                        "atr":          round(last_candle['atr'], 2),
+                        "ema50":        round(last_candle['ema50'], 2),
+                        "swing_low":    find_last_swing_low(df),
+                        "swing_high":   find_last_swing_high(df),
+                        "smart_money":  smart_money,  # 🛰️ ข้อมูลว่า "รายใหญ่เล่นทางไหน"
                     }
-                    ai_res = gatekeeper.validate_signal(market_state, {"direction": signal, "pattern": reason})
+                    ai_res        = gatekeeper.validate_signal(market_state, {"direction": signal, "pattern": reason})
                     ai_confidence = ai_res.get('confidence', 50)
+                    ai_sl         = ai_res.get('suggested_sl')
+                    ai_tp         = ai_res.get('suggested_tp')
+                    
                     if ai_res['decision'] == "REJECT" or ai_confidence < AI_CONFIDENCE_THRESHOLD:
-                        logger.warning(f"AI Council Rejected {signal}: {ai_res['reason']}")
+                        logger.warning(f"AI Rejected [{signal}]: {ai_res['reason']}")
                         signal = "NONE"
 
-            # --- Execution (ONLY OPEN TRADES) ---
+            # --- Execution ---
             if signal in ["BUY", "SELL"]:
-                sl, tp = calculate_sl_tp(df, signal, price)
+                # ใช้ AI SL/TP ถ้ามี, ถ้าไม่มีค่อยคำนวณเอง
+                sl, tp = calculate_sl_tp(df, signal, price, ai_sl=ai_sl, ai_tp=ai_tp)
                 if sl and tp:
-                    mult = 1.5 if ai_confidence >= 80 else (0.5 if ai_confidence < 50 else 1.0)
-                    lot = round(max(MIN_LOT, min(BASE_LOT * mult, MAX_LOT)), 2)
+                    # Lot size ตาม Tier + Confidence
+                    tier_mult = 1.5 if "[T1]" in reason else (1.2 if "[T2]" in reason else 1.0)
+                    conf_mult = 1.5 if ai_confidence >= 80 else (0.8 if ai_confidence < 55 else 1.0)
+                    lot = round(max(MIN_LOT, min(BASE_LOT * tier_mult * conf_mult, MAX_LOT)), 2)
                     
-                    logger.info(f"[SIGNAL] {signal} CONFIRMED | Price: {price:.2f} | Lot: {lot}")
+                    tier_tag = "[T1]" if "[T1]" in reason else "[T2]" if "[T2]" in reason else "[T3]"
+                    logger.info(f"[{tier_tag}] {signal} CONFIRMED | Price: {price:.2f} | Lot: {lot} | SL: {sl} | TP: {tp}")
                     if not IS_ANALYSIS_MODE:
                         write_file_safe("bot_active_trade.txt", "1")
                         write_file_safe("bot_active_trade_dir.txt", signal)
                         write_signal(signal, sl, tp, lot)
                         last_trade_candle = candle_counter
-                        send_line(f"🎯 [GOLD PRO] {signal} AT {price}\n🏆 TP: {tp} | 🛡️ SL: {sl}\n⚖️ Lot: {lot} (Conf: {ai_confidence}%)")
+                        send_line(f"🎯 [{tier_tag}] {signal} @ {price}\n🏆 TP: {tp} | 🛡️ SL: {sl}\n⚖️ Lot: {lot} | AI: {ai_confidence}%\n📌 {reason[:60]}")
                 else:
                     logger.error("Failed to calculate SL/TP levels.")
                     signal = "NONE"
+
 
             if signal == "NONE":
                 if reason == "Market Closed":

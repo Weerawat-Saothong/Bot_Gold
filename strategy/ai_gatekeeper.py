@@ -66,51 +66,42 @@ class AIGatekeeper:
         }
     
     def _build_prompt(self, market_state, signal_data) -> str:
-        return f"""You are a GOLD (XAU/USD) trading expert. Analyze this signal and suggest optimal SL/TP levels:
+        direction = signal_data.get('direction')
+        pattern   = signal_data.get('pattern', '')
+        tier      = "[T1]" if "[T1]" in pattern else "[T2]" if "[T2]" in pattern else "[T3]"
+        
+        return f"""You are an elite XAUUSD (Gold) institutional trader. Analyze this setup and make a decisive trade call.
 
-=== Market Data ===
-• Price: {market_state.get('price')}
-• HTF Trend: {market_state.get('htf_trend')}
-• LTF Trend: {market_state.get('ltf_trend')}
-• RSI: {market_state.get('rsi')}
-• ATR: {market_state.get('atr')}
-• Structure: {market_state.get('structure')}
-• Swing Low: {market_state.get('swing_low')}
-• Swing High: {market_state.get('swing_high')}
-• EMA50: {market_state.get('ema50')}
+=== Market Context ===
+Price:         {market_state.get('price')}
+HTF Trend:     {market_state.get('htf_trend')}
+RSI:           {market_state.get('rsi')}
+ATR:           {market_state.get('atr')}
+EMA50:         {market_state.get('ema50', 'N/A')}
+Swing Low:     {market_state.get('swing_low')}
+Swing High:    {market_state.get('swing_high')}
+Smart Money:   {market_state.get('smart_money', 'N/A')}
 
 === Signal ===
-• Direction: {signal_data.get('direction')}
-• Pattern: {signal_data.get('pattern')}
+Direction: {direction}
+Pattern:   {pattern}
+Tier:      {tier} ({'PRIME - very high probability' if tier == '[T1]' else 'SMART - trend aligned' if tier == '[T2]' else 'MOMENTUM - volume confirmed'})
 
-=== Question ===
-1. Should we enter this trade?
-2. If CONFIRM, suggest the best Stop Loss and Take Profit levels based on the market structure.
+=== Task ===
+1. Decide: CONFIRM or REJECT this trade.
+2. If CONFIRM, provide precise SL and TP based on market structure.
 
-=== RULES FOR SL/TP ===
-• For BUY: SL must be BELOW the price, TP must be ABOVE the price.
-• For SELL: SL must be ABOVE the price, TP must be BELOW the price.
-• SL should be placed near a confirmed swing level with some ATR buffer.
-• TP should aim for at least 1.5x the risk (distance from entry to SL).
-• Use round numbers where possible.
+=== SL/TP Rules ===
+- BUY:  SL below price (near swing low), TP above price (min 1.5x risk)
+- SELL: SL above price (near swing high), TP below price (min 1.5x risk)
+- Use ATR for buffer: SL buffer = ATR * 0.5
 
-=== IMPORTANT ===
- You MUST respond in ENGLISH ONLY
- Use EXACTLY this format (5 lines):
-
+=== Response Format (STRICT - 5 lines only) ===
 CONFIRM
 Confidence: 85
-Reason: RSI oversold with strong uptrend
-SL: 3010.50
-TP: 3035.00
-
-OR
-
-REJECT
-Confidence: 45
-Reason: RSI overbought, weak momentum
-SL: 0
-TP: 0
+Reason: Strong BOS with HTF alignment
+SL: 3010.00
+TP: 3040.00
 
 === Response ===
 """
